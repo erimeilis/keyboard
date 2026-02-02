@@ -1,12 +1,13 @@
-import './App.css'
+import React from 'react';
+import Keyboard from './components/Keyboard';
+import './App.css';
 
 function App() {
   return (
-    <div className="app">
-      <h1>Hebrew Keyboard</h1>
-      <p>Tauri + React + TypeScript</p>
+    <div className="app-container">
+      <Keyboard />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

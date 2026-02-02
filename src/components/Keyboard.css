@@ -199,6 +199,23 @@
   transition: transform 0.05s ease, box-shadow 0.05s ease;
 }
 
+/* Language emphasis based on active layout */
+.keyboard-wrapper[data-active-lang="he"] .key-label-primary {
+  opacity: 0.4; /* English dim */
+}
+
+.keyboard-wrapper[data-active-lang="he"] .key-label-secondary {
+  opacity: 1.0; /* Hebrew bright */
+}
+
+.keyboard-wrapper[data-active-lang="en"] .key-label-primary {
+  opacity: 1.0; /* English bright */
+}
+
+.keyboard-wrapper[data-active-lang="en"] .key-label-secondary {
+  opacity: 0.4; /* Hebrew dim */
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .keyboard {

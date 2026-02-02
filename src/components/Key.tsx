@@ -1,44 +1,46 @@
 import React from 'react';
 import './Keyboard.css';
 
-export interface KeySingleProps {
-  variant: 'single';
-  label: string;
+interface BaseKeyProps {
   width?: number | 'fill';
   className?: string;
   colorTheme?: 'black' | 'gray' | 'red';
+  isPressed?: boolean;
+  onMouseClick?: () => void;
 }
 
-export interface KeyDualStackProps {
+export interface KeySingleProps extends BaseKeyProps {
+  variant: 'single';
+  label: string;
+}
+
+export interface KeyDualStackProps extends BaseKeyProps {
   variant: 'dualStack';
   top: string;
   bottom: string;
-  width?: number | 'fill';
-  className?: string;
-  colorTheme?: 'black' | 'gray' | 'red';
 }
 
-export interface KeyDualPosProps {
+export interface KeyDualPosProps extends BaseKeyProps {
   variant: 'dualPos';
   primary: string;
   secondary: string;
-  width?: number | 'fill';
-  className?: string;
-  colorTheme?: 'black' | 'gray' | 'red';
 }
 
-export interface KeyIconProps {
+export interface KeyIconProps extends BaseKeyProps {
   variant: 'icon';
   iconName: string;
-  width?: number | 'fill';
-  className?: string;
-  colorTheme?: 'black' | 'gray' | 'red';
 }
 
 export type KeyProps = KeySingleProps | KeyDualStackProps | KeyDualPosProps | KeyIconProps;
 
 export const Key: React.FC<KeyProps> = (props) => {
-  const { width = 54, className = '', colorTheme = 'black' } = props;
+  const {
+    width = 54,
+    className = '',
+    colorTheme = 'black',
+    isPressed = false,
+    onMouseClick
+  } = props;
 
   const widthStyle = width === 'fill' ? '100%' : `${width}px`;
 
@@ -50,6 +52,12 @@ export const Key: React.FC<KeyProps> = (props) => {
         return 'key-theme-gray';
       default:
         return 'key-theme-black';
+    }
+  };
+
+  const handleClick = () => {
+    if (onMouseClick) {
+      onMouseClick();
     }
   };
 
@@ -97,8 +105,9 @@ export const Key: React.FC<KeyProps> = (props) => {
 
   return (
     <div
-      className={`key ${getThemeClass()} key-variant-${props.variant} ${className}`}
+      className={`key ${getThemeClass()} key-variant-${props.variant} ${isPressed ? 'key-pressed' : ''} ${className}`}
       style={{ width: widthStyle }}
+      onClick={handleClick}
     >
       {renderContent()}
     </div>

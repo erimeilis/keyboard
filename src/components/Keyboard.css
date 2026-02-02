@@ -1,0 +1,200 @@
+/* CSS Custom Properties */
+:root {
+  /* Key text colors */
+  --key-text: #E8E8EA;
+  --key-primary-fill: #E8E8EA;
+  --key-secondary-fill: #A8A8AA;
+
+  /* Shadow variables */
+  --key-press-top-shadow-y: -0.5px;
+  --key-press-shadow-y: 1px;
+  --key-press-shadow-blur: 2px;
+  --key-press-shadow-spread: 0px;
+
+  /* Black theme colors */
+  --key-press-black-top: #3A3A3E;
+  --key-press-black-mid: #2E2E32;
+  --key-press-black-bot: #28282C;
+  --key-press-highlight-black: #FFFFFF14;
+
+  /* Gray theme colors */
+  --key-press-gray-top: #5A5A5E;
+  --key-press-gray-mid: #4E4E52;
+  --key-press-gray-bot: #48484C;
+  --key-press-highlight-gray: #FFFFFF1A;
+
+  /* Red theme colors */
+  --key-press-red-top: #DD5560;
+  --key-press-red-mid: #C84850;
+  --key-press-red-bot: #B83D48;
+  --key-press-highlight-red: #FFFFFF28;
+
+  /* Inner shadow colors */
+  --key-press-inner-top: #FFFFFF18;
+  --key-press-inner-bottom: #00000028;
+  --key-press-inset-glow: #00000044;
+}
+
+/* Keyboard container */
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px;
+  width: 952px;
+  background: linear-gradient(180deg, #222226 0%, #1A1A1E 30%, #141416 100%);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.27),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Keyboard row */
+.keyboard-row {
+  display: flex;
+  gap: 3px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Base key styles */
+.key {
+  height: 46px;
+  border-radius: 4px;
+  display: flex;
+  flex-shrink: 0;
+  position: relative;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.key:active {
+  transform: translateY(1px);
+}
+
+/* Key theme: Black (default) */
+.key-theme-black {
+  background: linear-gradient(180deg, var(--key-press-black-top) 0%, var(--key-press-black-mid) 30%, var(--key-press-black-bot) 100%),
+              linear-gradient(180deg, var(--key-press-highlight-black) 0%, transparent 50%);
+  box-shadow:
+    0 var(--key-press-top-shadow-y) 1px rgba(58, 58, 66, 0.53),
+    0 2px 2px rgba(13, 13, 15, 0.8),
+    0 var(--key-press-shadow-y) var(--key-press-shadow-blur) var(--key-press-shadow-spread) rgba(0, 0, 0, 0.67),
+    0 1px 1px var(--key-press-inner-top),
+    0 -1px 2px var(--key-press-inner-bottom),
+    0 3px 6px -1px var(--key-press-inset-glow);
+}
+
+/* Key theme: Gray */
+.key-theme-gray {
+  background: linear-gradient(180deg, var(--key-press-gray-top) 0%, var(--key-press-gray-mid) 30%, var(--key-press-gray-bot) 100%),
+              linear-gradient(180deg, var(--key-press-highlight-gray) 0%, transparent 50%);
+  box-shadow:
+    0 var(--key-press-top-shadow-y) 1px rgba(90, 90, 100, 0.53),
+    0 2px 2px rgba(13, 13, 15, 0.8),
+    0 var(--key-press-shadow-y) var(--key-press-shadow-blur) var(--key-press-shadow-spread) rgba(0, 0, 0, 0.67),
+    0 1px 1px var(--key-press-inner-top),
+    0 -1px 2px var(--key-press-inner-bottom),
+    0 3px 6px -1px var(--key-press-inset-glow);
+}
+
+/* Key theme: Red */
+.key-theme-red {
+  background: linear-gradient(180deg, var(--key-press-red-top) 0%, var(--key-press-red-mid) 30%, var(--key-press-red-bot) 100%),
+              linear-gradient(180deg, var(--key-press-highlight-red) 0%, transparent 50%);
+  box-shadow:
+    0 var(--key-press-top-shadow-y) 1px rgba(221, 85, 96, 0.53),
+    0 2px 2px rgba(13, 13, 15, 0.8),
+    0 var(--key-press-shadow-y) var(--key-press-shadow-blur) var(--key-press-shadow-spread) rgba(0, 0, 0, 0.67),
+    0 1px 1px var(--key-press-inner-top),
+    0 -1px 2px var(--key-press-inner-bottom),
+    0 3px 6px -1px var(--key-press-inset-glow);
+}
+
+/* Single label key */
+.key-variant-single {
+  align-items: center;
+  justify-content: center;
+}
+
+.key-label-single {
+  color: var(--key-text);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Dual stack key (top and bottom labels) */
+.key-variant-dualStack {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.key-label-top {
+  color: var(--key-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.key-label-bottom {
+  color: var(--key-text);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* Dual position key (primary and secondary) */
+.key-variant-dualPos {
+  position: relative;
+}
+
+.key-label-primary {
+  position: absolute;
+  top: 12px;
+  left: 17px;
+  color: var(--key-primary-fill);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.key-label-secondary {
+  position: absolute;
+  top: 25px;
+  right: 7px;
+  color: var(--key-secondary-fill);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Icon key */
+.key-variant-icon {
+  align-items: center;
+  justify-content: center;
+}
+
+.key-icon {
+  color: var(--key-text);
+  opacity: 0.5;
+  width: 24px;
+  height: 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .keyboard {
+    transform: scale(0.85);
+    transform-origin: top left;
+  }
+}
+
+@media (max-width: 768px) {
+  .keyboard {
+    transform: scale(0.65);
+    transform-origin: top left;
+  }
+}

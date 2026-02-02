@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "autoApprove": true,
+    "allowedPaths": [
+      "/Volumes/Annette/IdeaProjects/keyboard"
+    ],
+    "allow": [
+      "Write(/Volumes/Annette/IdeaProjects/keyboard/**/*)",
+      "Edit(/Volumes/Annette/IdeaProjects/keyboard/**/*)",
+      "Bash(*)"
+    ]
+  }
+}

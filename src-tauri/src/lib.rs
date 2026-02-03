@@ -20,19 +20,14 @@ fn get_active_keyboard_layout() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  env_logger::init();
-
   tauri::Builder::default()
+    .plugin(
+      tauri_plugin_log::Builder::default()
+        .level(log::LevelFilter::Info)
+        .build(),
+    )
     .setup(|app| {
       info!("Application started");
-
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
 
       let handle = app.handle().clone();
       keyboard_listener::start_listener(handle);

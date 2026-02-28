@@ -4,7 +4,7 @@ import { Keyboard } from './Keyboard';
 
 // Mock Tauri API
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn((event, callback) => {
+  listen: vi.fn((_event, _callback) => {
     // Return cleanup function
     return Promise.resolve(() => {});
   }),

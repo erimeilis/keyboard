@@ -7,6 +7,7 @@ interface BaseKeyProps {
   colorTheme?: 'black' | 'gray' | 'red';
   isPressed?: boolean;
   onMouseClick?: () => void;
+  onDoubleClick?: () => void;
 }
 
 export interface KeySingleProps extends BaseKeyProps {
@@ -39,10 +40,12 @@ export const Key: React.FC<KeyProps> = (props) => {
     className = '',
     colorTheme = 'black',
     isPressed = false,
-    onMouseClick
+    onMouseClick,
+    onDoubleClick
   } = props;
 
-  const widthStyle = width === 'fill' ? '100%' : `${width}px`;
+  const widthStyle = width === 'fill' ? undefined : `${width}px`;
+  const flexStyle = width === 'fill' ? { flexGrow: 1, flexShrink: 1, flexBasis: 0 } : {};
 
   const getThemeClass = () => {
     switch (colorTheme) {
@@ -106,8 +109,9 @@ export const Key: React.FC<KeyProps> = (props) => {
   return (
     <div
       className={`key ${getThemeClass()} key-variant-${props.variant} ${isPressed ? 'key-pressed' : ''} ${className}`}
-      style={{ width: widthStyle }}
+      style={{ width: widthStyle, ...flexStyle }}
       onClick={handleClick}
+      onDoubleClick={onDoubleClick}
     >
       {renderContent()}
     </div>

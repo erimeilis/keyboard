@@ -25,3 +25,10 @@ dist-ssr
 
 # Tauri
 src-tauri/target
+
+# Build output
+build
+
+# Claude and docs
+.claude
+docs

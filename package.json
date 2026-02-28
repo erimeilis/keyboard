@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
+    "tauri:build": "tauri build && node scripts/copy-build.js",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },
@@ -37,7 +37,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/api": "^2.10.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   }

@@ -41,13 +41,10 @@
   flex-direction: column;
   gap: 3px;
   padding: 16px;
-  width: 952px;
+  width: 932px;
   background: linear-gradient(180deg, #222226 0%, #1A1A1E 30%, #141416 100%);
   border-radius: 16px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.27),
-    0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Keyboard row */
@@ -55,8 +52,10 @@
   display: flex;
   gap: 3px;
   height: 48px;
+  width: 900px !important;
+  max-width: 900px !important;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 /* Base key styles */
@@ -199,6 +198,20 @@
   transition: transform 0.05s ease, box-shadow 0.05s ease;
 }
 
+/* Sticky modifier — single click active, waiting for next key */
+.key-sticky {
+  background: linear-gradient(180deg, #4a6fa5 0%, #2d4a7a 100%) !important;
+  border-color: rgba(100, 160, 255, 0.4) !important;
+  box-shadow: 0 0 8px rgba(100, 160, 255, 0.3);
+}
+
+/* Locked modifier — double-click locked, stays active */
+.key-locked {
+  background: linear-gradient(180deg, #5a3a8a 0%, #3d2060 100%) !important;
+  border-color: rgba(160, 100, 255, 0.4) !important;
+  box-shadow: 0 0 8px rgba(160, 100, 255, 0.3);
+}
+
 /* Language emphasis based on active layout */
 .keyboard-wrapper[data-active-lang="he"] .key-label-primary {
   opacity: 0.4; /* English dim */
@@ -216,17 +229,3 @@
   opacity: 0.4; /* Hebrew dim */
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .keyboard {
-    transform: scale(0.85);
-    transform-origin: top left;
-  }
-}
-
-@media (max-width: 768px) {
-  .keyboard {
-    transform: scale(0.65);
-    transform-origin: top left;
-  }
-}

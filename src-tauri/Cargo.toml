@@ -22,10 +22,13 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 env_logger = "0.11"
-tauri = { version = "2.10.0", features = [] }
+tauri = { version = "2.10.0", features = ["macos-private-api", "tray-icon", "image-png"] }
 tauri-plugin-log = "2"
-rdev = "0.5"
+rdev = { git = "https://github.com/fufesou/rdev" }
+tokio = { version = "1", features = ["time"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9"
 core-foundation-sys = "0.8"
+core-graphics = { version = "0.22", features = ["elcapitan"] }
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }

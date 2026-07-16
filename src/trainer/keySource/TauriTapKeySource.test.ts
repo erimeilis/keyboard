@@ -37,4 +37,27 @@ describe('TauriTapKeySource', () => {
     await Promise.resolve();
     expect(unlisten).toHaveBeenCalled();
   });
+
+  it('unlistens even when stop() is called before listen() resolves (race)', async () => {
+    const src = new TauriTapKeySource();
+    const events: KeyEvent[] = [];
+
+    // No `await` between start() and stop(): stop() runs while listen()'s
+    // promise is still pending, so the guard inside the .then() callback
+    // (`if (this.stopped) { un(); return; }`) is what must fire the unlisten.
+    src.start(e => events.push(e));
+    src.stop();
+
+    expect(unlisten).not.toHaveBeenCalled(); // guard hasn't run yet — still pending
+
+    // Flush microtasks so the mocked listen() promise resolves and its
+    // .then() callback executes.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(unlisten).toHaveBeenCalledTimes(1);
+
+    // Teardown happened before any event was ever delivered.
+    expect(events).toEqual([]);
+  });
 });

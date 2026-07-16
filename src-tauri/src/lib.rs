@@ -7,7 +7,7 @@ mod simulate_flag;
 #[cfg(target_os = "macos")]
 mod layout_detector_macos;
 
-use log::{info, warn};
+use log::{error, info, warn};
 use tauri::{Manager, RunEvent};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
@@ -39,6 +39,89 @@ fn get_active_keyboard_layout() -> String {
     }
 }
 
+/// Applies the exact non-activating overlay configuration to a `main`-window panel: sets the
+/// `NonactivatingPanel` style-mask bit (so mouse clicks on the panel don't activate the app),
+/// keeps it visible when the app deactivates, only lets it become key when strictly needed, and
+/// orders it to the front. Shared by `setup()`'s initial conversion and `set_trainer_mode`'s
+/// revert so the two conversion sites can never drift out of sync.
+#[cfg(target_os = "macos")]
+fn configure_nonactivating_panel<R: tauri::Runtime>(panel: &tauri_nspanel::PanelHandle<R>) {
+    panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
+    panel.set_hides_on_deactivate(false);
+    panel.set_becomes_key_only_if_needed(true);
+    panel.order_front_regardless();
+}
+
+/// Performs the trainer-mode window/panel transition. MUST be invoked on the main thread (see
+/// `set_trainer_mode`), because the `to_window()` / `to_panel()` conversions swizzle the window's
+/// AppKit class (`object_setClass`) and send AppKit messages, none of which tauri-nspanel
+/// dispatches to the main thread itself.
+///
+/// Revert correctness (idempotent across repeated activate/deactivate cycles): the nspanel
+/// `Store` is the crate's own source of truth for "is `main` currently a panel". `to_panel()`
+/// inserts the label into that store; `to_window()` removes it (it calls `remove_webview_panel`
+/// before swizzling the class back). So a successful `get_webview_panel("main")` reliably means
+/// the window is *already* a panel, and an error means it is *already* a plain window. We only
+/// convert in the direction that is needed, which prevents re-running `from_window` on an
+/// already-swizzled panel (that would capture the panel's own class as `original_class` and
+/// corrupt the next `to_window()` restore).
+#[cfg(target_os = "macos")]
+fn apply_trainer_mode(app: &tauri::AppHandle, active: bool) {
+    if active {
+        // Convert the non-activating panel back into a plain, focusable window so it can take
+        // key-window / keyboard focus. Convert only when `main` is currently a panel.
+        match app.get_webview_panel("main") {
+            Ok(panel) => {
+                if panel.to_window().is_none() {
+                    warn!(
+                        "set_trainer_mode(true): to_window() returned None; 'main' was not in the \
+                         nspanel store, so it may not have been made focusable"
+                    );
+                }
+            }
+            Err(_) => {
+                info!("set_trainer_mode(true): 'main' is already a plain window; skipping to_window()");
+            }
+        }
+        match app.get_webview_window("main") {
+            Some(window) => {
+                if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
+                    error!("set_trainer_mode(true): failed to set Regular activation policy: {e}");
+                }
+                if let Err(e) = window.set_focus() {
+                    error!("set_trainer_mode(true): failed to focus 'main' window: {e}");
+                }
+            }
+            None => {
+                error!("set_trainer_mode(true): no webview window labelled 'main'; cannot focus");
+            }
+        }
+    } else {
+        // Revert to the non-activating overlay panel. Convert only when `main` is currently a
+        // plain window (see the idempotency note above): re-converting an existing panel would
+        // corrupt the recorded original class and break the next activate.
+        match app.get_webview_panel("main") {
+            Ok(_) => {
+                info!("set_trainer_mode(false): 'main' is already a panel; skipping re-conversion");
+            }
+            Err(_) => match app.get_webview_window("main") {
+                Some(window) => match window.to_panel::<KeyboardPanel>() {
+                    Ok(panel) => configure_nonactivating_panel(&panel),
+                    Err(e) => error!(
+                        "set_trainer_mode(false): failed to convert 'main' window to KeyboardPanel: {e}"
+                    ),
+                },
+                None => error!(
+                    "set_trainer_mode(false): no webview window labelled 'main'; cannot revert to overlay panel"
+                ),
+            },
+        }
+        if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Accessory) {
+            error!("set_trainer_mode(false): failed to set Accessory activation policy: {e}");
+        }
+    }
+}
+
 /// Toggles the window between the non-activating `KeyboardPanel` overlay and a regular,
 /// focusable window, so the trainer's DOM-focus capture source can receive keystrokes in a
 /// focused webview `<input>` instead of them leaking through to whatever app was frontmost.
@@ -51,36 +134,22 @@ fn get_active_keyboard_layout() -> String {
 /// the window through `Panel::to_window()` / `WebviewWindowExt::to_panel()` — swapping the
 /// window's underlying Objective-C class between the panel subclass and its original, focusable
 /// window class — which is the mechanism `tauri-nspanel` itself provides for this exact purpose.
+///
+/// The actual conversion runs inside `run_on_main_thread`: `#[tauri::command]` handlers are not
+/// guaranteed to run on the main thread, but the `object_setClass` swizzling and AppKit messages
+/// in `to_window()`/`to_panel()` must. tauri-nspanel performs no internal main-thread dispatch —
+/// its own SAFETY note (panel.rs) states the caller "must ensure actual panel operations happen
+/// on the main thread". Wrapping the whole sequence in a single closure also keeps the swizzle,
+/// activation-policy change and focus/order calls correctly ordered.
 #[tauri::command]
 fn set_trainer_mode(app: tauri::AppHandle, active: bool) {
     #[cfg(target_os = "macos")]
     {
-        if active {
-            // If currently the non-activating panel, convert it back to a plain window so it
-            // becomes eligible to take key-window / keyboard focus.
-            if let Ok(panel) = app.get_webview_panel("main") {
-                let _ = panel.to_window();
-            }
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-                let _ = window.set_focus();
-            }
-        } else {
-            // If currently a plain window (trainer mode was on), convert it back into the
-            // non-activating overlay panel. Guarded so a repeated `false` call doesn't
-            // re-swizzle an already-non-activating panel (which would corrupt the class it
-            // records as "original" to restore to on the next `to_window()` call).
-            if app.get_webview_panel("main").is_err() {
-                if let Some(window) = app.get_webview_window("main") {
-                    if let Ok(panel) = window.to_panel::<KeyboardPanel>() {
-                        panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
-                        panel.set_hides_on_deactivate(false);
-                        panel.set_becomes_key_only_if_needed(true);
-                        panel.order_front_regardless();
-                    }
-                }
-            }
-            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+        let app_for_main = app.clone();
+        if let Err(e) = app.run_on_main_thread(move || {
+            apply_trainer_mode(&app_for_main, active);
+        }) {
+            error!("set_trainer_mode({active}): failed to dispatch onto the main thread: {e}");
         }
     }
     #[cfg(not(target_os = "macos"))]
@@ -139,13 +208,10 @@ pub fn run() {
       {
           if let Some(window) = app.get_webview_window("main") {
               let panel = window.to_panel::<KeyboardPanel>().unwrap();
-              // Set the NonactivatingPanel style mask bit so macOS knows
-              // mouse events on this panel should not trigger app activation.
-              panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
-              panel.set_hides_on_deactivate(false);
-              panel.set_becomes_key_only_if_needed(true);
+              // Apply the non-activating overlay configuration (shared with the
+              // set_trainer_mode revert path so the two conversion sites stay in sync).
+              configure_nonactivating_panel(&panel);
               info!("Window converted to NSPanel (non-activating, accessory policy)");
-              panel.order_front_regardless();
           }
       }
 

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window';
 import { Keyboard } from './components/Keyboard';
 import { useKeyboardLayout } from './hooks/useKeyboardLayout';
+import { TrainerMode } from './trainer/TrainerMode';
 import './App.css';
 
 const CONTROLS_HEIGHT = 24;
@@ -13,6 +14,7 @@ const MAX_SCALE = 1.5;
 function App() {
   const activeLayout = useKeyboardLayout();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
   const [scale, setScale] = useState(1);
   const [preCollapseSize, setPreCollapseSize] = useState<{ width: number; height: number } | null>(null);
   const [preCollapsePos, setPreCollapsePos] = useState<{ x: number; y: number } | null>(null);
@@ -135,6 +137,10 @@ function App() {
     window.addEventListener('mouseup', handleMouseUp);
   }, []);
 
+  if (isTraining) {
+    return <TrainerMode onExit={() => setIsTraining(false)} />;
+  }
+
   if (isCollapsed) {
     return (
       <div className="app-container collapsed">
@@ -164,6 +170,7 @@ function App() {
         <div className="window-controls" onMouseDown={(e) => e.stopPropagation()}>
           <button className="control-btn close" onClick={handleClose} title="Hide window" />
           <button className="control-btn collapse" onClick={handleCollapse} title="Collapse" />
+          <button className="control-btn trainer" onClick={() => setIsTraining(true)} title="Typing trainer">⌨</button>
         </div>
       </div>
       {/* Zoomed keyboard — no drag handler here */}

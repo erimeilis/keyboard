@@ -1,5 +1,6 @@
 import React from 'react';
 import './Keyboard.css';
+import { useTrainerKeyView } from '../trainer/TrainerKeyboardContext';
 
 interface BaseKeyProps {
   width?: number | 'fill';
@@ -8,6 +9,7 @@ interface BaseKeyProps {
   isPressed?: boolean;
   onMouseClick?: () => void;
   onDoubleClick?: () => void;
+  id?: string;
 }
 
 export interface KeySingleProps extends BaseKeyProps {
@@ -46,6 +48,19 @@ export const Key: React.FC<KeyProps> = (props) => {
 
   const widthStyle = width === 'fill' ? undefined : `${width}px`;
   const flexStyle = width === 'fill' ? { flexGrow: 1, flexShrink: 1, flexBasis: 0 } : {};
+
+  const trainerView = useTrainerKeyView(props.id);
+  const trainerClass = trainerView
+    ? [
+        trainerView.isNextTarget ? 'key-next-target' : '',
+        trainerView.finger ? `key-finger-${trainerView.finger}` : '',
+        trainerView.dim ? 'key-dim' : '',
+        trainerView.hidden ? 'key-hidden' : '',
+      ].filter(Boolean).join(' ')
+    : '';
+  const trainerStyle = trainerView?.heat != null
+    ? ({ ['--key-heat' as any]: String(trainerView.heat) })
+    : {};
 
   const getThemeClass = () => {
     switch (colorTheme) {
@@ -108,8 +123,8 @@ export const Key: React.FC<KeyProps> = (props) => {
 
   return (
     <div
-      className={`key ${getThemeClass()} key-variant-${props.variant} ${isPressed ? 'key-pressed' : ''} ${className}`}
-      style={{ width: widthStyle, ...flexStyle }}
+      className={`key ${getThemeClass()} key-variant-${props.variant} ${isPressed ? 'key-pressed' : ''} ${trainerClass} ${className}`}
+      style={{ width: widthStyle, ...flexStyle, ...trainerStyle }}
       onClick={handleClick}
       onDoubleClick={onDoubleClick}
     >

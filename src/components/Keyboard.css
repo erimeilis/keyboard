@@ -229,3 +229,26 @@
   opacity: 0.4; /* Hebrew dim */
 }
 
+/* Trainer visuals */
+.key-next-target { outline: 2px solid #4ade80; outline-offset: -2px; box-shadow: 0 0 10px rgba(74,222,128,0.7); }
+.key-hidden .key-label-primary,
+.key-hidden .key-label-secondary,
+.key-hidden .key-label-single { visibility: hidden; }
+.key-dim .key-label-primary,
+.key-dim .key-label-secondary { opacity: 0.25; }
+/* Heatmap: red (0) -> green (1) via --key-heat (0..1) */
+.key[style*="--key-heat"] { background-image: linear-gradient(hsl(calc(var(--key-heat) * 120) 70% 45% / 0.55), hsl(calc(var(--key-heat) * 120) 70% 45% / 0.55)); }
+/* Finger zones (subtle left border tint) */
+.key-finger-l-pinky  { border-bottom: 3px solid #f87171; }
+.key-finger-l-ring   { border-bottom: 3px solid #fb923c; }
+.key-finger-l-middle { border-bottom: 3px solid #facc15; }
+.key-finger-l-index  { border-bottom: 3px solid #4ade80; }
+.key-finger-r-index  { border-bottom: 3px solid #22d3ee; }
+.key-finger-r-middle { border-bottom: 3px solid #60a5fa; }
+.key-finger-r-ring   { border-bottom: 3px solid #a78bfa; }
+.key-finger-r-pinky  { border-bottom: 3px solid #f472b6; }
+.key-finger-thumb    { border-bottom: 3px solid #94a3b8; }
+/* Fault animation (Task 27) */
+@keyframes key-fault { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.key-fault { animation: key-fault 180ms ease-in-out; background-color: rgba(248,113,113,0.6) !important; }
+

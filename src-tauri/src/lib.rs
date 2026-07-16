@@ -13,7 +13,7 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 
 #[cfg(target_os = "macos")]
-use tauri_nspanel::{tauri_panel, StyleMask, WebviewWindowExt};
+use tauri_nspanel::{tauri_panel, ManagerExt, StyleMask, WebviewWindowExt};
 
 // Define a non-activating panel class: can't become key window, floats above other windows
 #[cfg(target_os = "macos")]
@@ -36,6 +36,56 @@ fn get_active_keyboard_layout() -> String {
     #[cfg(not(target_os = "macos"))]
     {
         "com.apple.keylayout.US".to_string() // Fallback for non-macOS
+    }
+}
+
+/// Toggles the window between the non-activating `KeyboardPanel` overlay and a regular,
+/// focusable window, so the trainer's DOM-focus capture source can receive keystrokes in a
+/// focused webview `<input>` instead of them leaking through to whatever app was frontmost.
+///
+/// `KeyboardPanel` (see `tauri_panel!` above) bakes `can_become_key_window: false` into its
+/// Objective-C class at *compile* time — `tauri-nspanel` has no runtime setter for that flag
+/// (only a handful of properties like `hides_on_deactivate` can be flipped after the panel is
+/// created), so simply changing the activation policy and calling `set_focus()` on the panel
+/// itself would never make it key window and would silently do nothing. Instead this round-trips
+/// the window through `Panel::to_window()` / `WebviewWindowExt::to_panel()` — swapping the
+/// window's underlying Objective-C class between the panel subclass and its original, focusable
+/// window class — which is the mechanism `tauri-nspanel` itself provides for this exact purpose.
+#[tauri::command]
+fn set_trainer_mode(app: tauri::AppHandle, active: bool) {
+    #[cfg(target_os = "macos")]
+    {
+        if active {
+            // If currently the non-activating panel, convert it back to a plain window so it
+            // becomes eligible to take key-window / keyboard focus.
+            if let Ok(panel) = app.get_webview_panel("main") {
+                let _ = panel.to_window();
+            }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                let _ = window.set_focus();
+            }
+        } else {
+            // If currently a plain window (trainer mode was on), convert it back into the
+            // non-activating overlay panel. Guarded so a repeated `false` call doesn't
+            // re-swizzle an already-non-activating panel (which would corrupt the class it
+            // records as "original" to restore to on the next `to_window()` call).
+            if app.get_webview_panel("main").is_err() {
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Ok(panel) = window.to_panel::<KeyboardPanel>() {
+                        panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
+                        panel.set_hides_on_deactivate(false);
+                        panel.set_becomes_key_only_if_needed(true);
+                        panel.order_front_regardless();
+                    }
+                }
+            }
+            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, active);
     }
 }
 
@@ -139,7 +189,7 @@ pub fn run() {
 
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![get_active_keyboard_layout, key_simulator::simulate_key])
+    .invoke_handler(tauri::generate_handler![get_active_keyboard_layout, key_simulator::simulate_key, set_trainer_mode])
     .build(tauri::generate_context!())
     .expect("error while building tauri application");
 

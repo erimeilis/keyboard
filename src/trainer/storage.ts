@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
   stats: 'trainer.stats',
   streak: 'trainer.streak',
   ghosts: 'trainer.ghosts',
+  history: 'trainer.history',
 } as const;
 
 export function createMemoryStore(): TrainerStore {

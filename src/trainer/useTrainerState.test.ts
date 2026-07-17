@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createMemoryStore } from './storage';
-import { loadSettings, saveSettings, mergeSessionStats, loadStats, saveStats } from './useTrainerState';
+import {
+  loadSettings, saveSettings, mergeSessionStats, loadStats, saveStats, loadHistory, saveHistory,
+} from './useTrainerState';
 import type { SessionResult, KeyStat } from './types';
 
 describe('trainer state', () => {
@@ -25,5 +27,13 @@ describe('trainer state', () => {
     const stats = { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } };
     saveStats(store, stats);
     expect(loadStats(store).KeyF.attempts).toBe(1);
+  });
+
+  it('defaults to an empty history and round-trips through the store', () => {
+    const store = createMemoryStore();
+    expect(loadHistory(store)).toEqual([]);
+    const history = [{ wpm: 40, accuracy: 0.9 }, { wpm: 45, accuracy: 0.95 }];
+    saveHistory(store, history);
+    expect(loadHistory(store)).toEqual(history);
   });
 });

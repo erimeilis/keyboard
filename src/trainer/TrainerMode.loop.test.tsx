@@ -34,6 +34,9 @@ describe('TrainerMode loop', () => {
     const { src, press } = fakeSource();
     render(<TrainerMode onExit={() => {}} store={store} makeSource={() => src} fixedTarget="כ" />);
     press('KeyF', 100); // 'כ' == KeyF
-    expect(screen.getByText(/WPM/i)).toBeTruthy();
+    // Scoped to SessionSummary's stat label: the summary phase now also renders
+    // StatsView, which has its own "WPM" sparkline label, so an unscoped query
+    // would match both and throw.
+    expect(screen.getByText('WPM', { selector: '.stat-label' })).toBeTruthy();
   });
 });

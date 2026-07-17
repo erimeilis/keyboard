@@ -26,6 +26,15 @@ export function saveStats(store: TrainerStore, stats: Record<KeyCode, KeyStat>):
   store.set(STORAGE_KEYS.stats, stats);
 }
 
+export type HistoryEntry = { wpm: number; accuracy: number };
+
+export function loadHistory(store: TrainerStore): HistoryEntry[] {
+  return store.get<HistoryEntry[]>(STORAGE_KEYS.history, []);
+}
+export function saveHistory(store: TrainerStore, history: HistoryEntry[]): void {
+  store.set(STORAGE_KEYS.history, history);
+}
+
 export function mergeSessionStats(
   prev: Record<KeyCode, KeyStat>,
   result: SessionResult,

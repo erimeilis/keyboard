@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Keyboard } from '../components/Keyboard';
 import { PracticePanel } from './PracticePanel';
 import { SessionSummary } from './SessionSummary';
+import { StatsView } from './StatsView';
 import { PlacementTest } from './PlacementTest';
 import { CustomText } from './CustomText';
 import { useTypingSession } from './useTypingSession';
@@ -18,7 +19,9 @@ import { createLocalStorageStore } from './storage';
 import type { TrainerStore } from './storage';
 import {
   loadSettings, loadProgress, saveProgress, loadStats, saveStats, mergeSessionStats,
+  loadHistory, saveHistory,
 } from './useTrainerState';
+import type { HistoryEntry } from './useTrainerState';
 import { DomKeySource } from './keySource/DomKeySource';
 import { TauriTapKeySource } from './keySource/TauriTapKeySource';
 import type { KeySource, KeyCode, KeyStat, Settings, SessionLog, SessionResult } from './types';
@@ -42,6 +45,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     () => (Object.keys(loadStats(store)).length === 0 ? 'placement' : 'typing'),
   );
   const [result, setResult] = useState<SessionResult | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory(store));
   const [mode, setMode] = useState<PracticeMode>('words');
   const [customText, setCustomText] = useState('');
 
@@ -85,6 +89,8 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
       const next = { ...progress, currentStageIndex: progress.currentStageIndex + 1, unlockedStageIndex: progress.currentStageIndex + 1 };
       setProgress(next); saveProgress(store, next);
     }
+    const nextHistory = [...history, { wpm: r.wpm, accuracy: r.accuracy }].slice(-100);
+    setHistory(nextHistory); saveHistory(store, nextHistory);
     setResult(r); setPhase('summary');
   };
 
@@ -120,6 +126,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
       {phase === 'summary' && result ? (
         <>
           <SessionSummary result={result} onNext={() => { setResult(null); setPhase('typing'); }} />
+          <StatsView history={history} />
           <Keyboard />
         </>
       ) : (

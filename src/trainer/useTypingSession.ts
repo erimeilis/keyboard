@@ -30,7 +30,24 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
   const startTs = useRef<number | null>(null);
   const outcomes = useRef<PosOutcome[]>([]);
 
+  // Updated on every render so onKey never sees a stale strictness/onComplete
+  // captured from the render when the [target] effect last (re)subscribed.
+  const strictnessRef = useRef(strictness);
+  strictnessRef.current = strictness;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
+    // (Re)starting for a new target: wipe any state left over from a
+    // previous session so this hook instance can be reused across targets.
+    idx.current = 0;
+    hadErrorHere.current = false;
+    lastTs.current = null;
+    startTs.current = null;
+    outcomes.current = [];
+    setIndex(0);
+    setStatuses(codes.map(() => 'pending'));
+
     const onKey = (e: KeyEvent) => {
       if (!e.down) return;
       const i = idx.current;
@@ -48,12 +65,12 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
         if (next >= codes.length) {
           const words: PosOutcome[][] = [];
           outcomes.current.forEach((o, k) => { const w = wordOf[k]; (words[w] ??= []).push(o); });
-          onComplete({ words: words.filter(Boolean), startTs: startTs.current!, endTs: e.ts });
+          onCompleteRef.current({ words: words.filter(Boolean), startTs: startTs.current!, endTs: e.ts });
         }
       } else {
         hadErrorHere.current = true;
         setStatuses(s => { const n = [...s]; n[i] = 'error'; return n; });
-        if (strictness === 'markThrough') {
+        if (strictnessRef.current === 'markThrough') {
           outcomes.current.push({ code: codes[i], firstTryCorrect: false, latencyMs: 0 });
           const next = i + 1; idx.current = next; setIndex(next);
         }

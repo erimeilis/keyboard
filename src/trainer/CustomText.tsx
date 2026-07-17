@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { byLetter } from './data/hebrewLayout';
 
 export function sanitizeHebrew(input: string): string {
-  // Keep only letters present in the layout and single spaces; drop niqqud/punctuation.
-  const kept = [...input].filter(ch => ch === ' ' || byLetter[ch] != null).join('');
+  // Keep only letters present in the layout and any whitespace; drop niqqud/punctuation.
+  const kept = [...input].filter(ch => /\s/.test(ch) || byLetter[ch] != null).join('');
   return kept.replace(/\s+/g, ' ').trim();
 }
 

@@ -141,4 +141,54 @@ describe('useTypingSession', () => {
     // The error at position 0 must not leak forward: position 1 was correct on the first try.
     expect(log.words[0][1]).toMatchObject({ code: 'KeyU', firstTryCorrect: true });
   });
+
+  it('is unaffected when onError is omitted (additive, optional callback)', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    // No onError passed at all — must not throw on a wrong key in either mode.
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'לו', strictness: 'stop', onComplete }));
+    expect(() => press('KeyT', 100)).not.toThrow(); // wrong key, stop mode
+    expect(result.current.statuses[0]).toBe('error');
+  });
+
+  it('fires onError on a wrong key in stop mode, without affecting index/statuses', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'לו', strictness: 'stop', onComplete, onError }));
+    press('KeyT', 100); // wrong for KeyK
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith('KeyK'); // expected code at the mistyped position
+    expect(result.current.index).toBe(0);
+    expect(result.current.statuses[0]).toBe('error');
+    press('KeyK', 150); // now correct — no additional onError call
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(result.current.index).toBe(1);
+  });
+
+  it('fires onError on a wrong key in markThrough mode, without affecting the advance-anyway behavior', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'לו', strictness: 'markThrough', onComplete, onError }));
+    press('KeyX', 100); // wrong for KeyK, markThrough advances anyway
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith('KeyK'); // expected code at the mistyped position
+    expect(result.current.index).toBe(1);
+    expect(result.current.statuses[0]).toBe('error');
+    press('KeyU', 200); // correct — no additional onError call
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire onError on a correct key', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    renderHook(() => useTypingSession({ source: src, target: 'לו', strictness: 'stop', onComplete, onError }));
+    press('KeyK', 100);
+    press('KeyU', 200);
+    expect(onError).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
 });

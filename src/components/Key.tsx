@@ -56,6 +56,7 @@ export const Key: React.FC<KeyProps> = (props) => {
         trainerView.finger ? `key-finger-${trainerView.finger}` : '',
         trainerView.dim ? 'key-dim' : '',
         trainerView.hidden ? 'key-hidden' : '',
+        trainerView.fault ? 'key-fault' : '',
       ].filter(Boolean).join(' ')
     : '';
   const trainerStyle = trainerView?.heat != null

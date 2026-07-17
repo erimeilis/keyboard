@@ -39,4 +39,16 @@ describe('TrainerMode loop', () => {
     // would match both and throw.
     expect(screen.getByText('WPM', { selector: '.stat-label' })).toBeTruthy();
   });
+
+  it('bursts a celebration when the completed session scores 3 stars', () => {
+    const store = createMemoryStore();
+    store.set('trainer.progress', { unlockedStageIndex: 0, currentStageIndex: 0, bestByStage: {} });
+    store.set('trainer.stats', { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } });
+    const { src, press } = fakeSource();
+    const { container } = render(<TrainerMode onExit={() => {}} store={store} makeSource={() => src} fixedTarget="כ" />);
+    // No burst before any session completes.
+    expect(container.querySelector('.celebration.active')).toBeNull();
+    press('KeyF', 100); // a single, instant, error-free keystroke -> 100% accuracy, huge wpm -> 3 stars
+    expect(container.querySelector('.celebration.active')).not.toBeNull();
+  });
 });

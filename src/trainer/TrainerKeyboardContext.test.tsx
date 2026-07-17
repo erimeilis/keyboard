@@ -30,4 +30,24 @@ describe('Key trainer visuals', () => {
     const { container } = render(<Key variant="single" label="esc" />);
     expect(container.querySelector('.key')!.className).not.toContain('key-next-target');
   });
+
+  it('adds key-fault when view.fault is set', () => {
+    const view = { ka: { fault: true } };
+    const { container } = render(
+      <TrainerKeyboardProvider value={view}>
+        <Key variant="dualPos" primary="A" secondary="ש" id="ka" />
+      </TrainerKeyboardProvider>
+    );
+    expect(container.querySelector('.key')!.className).toContain('key-fault');
+  });
+
+  it('does not add key-fault when view.fault is unset', () => {
+    const view = { ka: { isNextTarget: true } };
+    const { container } = render(
+      <TrainerKeyboardProvider value={view}>
+        <Key variant="dualPos" primary="A" secondary="ש" id="ka" />
+      </TrainerKeyboardProvider>
+    );
+    expect(container.querySelector('.key')!.className).not.toContain('key-fault');
+  });
 });

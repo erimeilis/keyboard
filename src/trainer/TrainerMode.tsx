@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Keyboard } from '../components/Keyboard';
 import { PracticePanel } from './PracticePanel';
@@ -7,6 +7,7 @@ import { StatsView } from './StatsView';
 import { PlacementTest } from './PlacementTest';
 import { CustomText } from './CustomText';
 import { useTypingSession } from './useTypingSession';
+import { Celebration, useFaultFlash } from './Celebration';
 import { buildKeyboardView } from './keyboardView';
 import { computeSessionResult } from './scoring';
 import { selectPractice, selectSentence } from './textSelection';
@@ -51,6 +52,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   const [streak, setStreak] = useState<StreakState>(() => loadStreak(store));
   const [mode, setMode] = useState<PracticeMode>('words');
   const [customText, setCustomText] = useState('');
+  const [celebrateTrigger, setCelebrateTrigger] = useState(0);
 
   const source = useMemo<KeySource>(
     () => (makeSource ? makeSource(settings)
@@ -88,7 +90,8 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     const r = computeSessionResult(log);
     const merged = mergeSessionStats(stats, r);
     setStats(merged); saveStats(store, merged);
-    if (canAdvance(progress.currentStageIndex, merged)) {
+    const advanced = canAdvance(progress.currentStageIndex, merged);
+    if (advanced) {
       const next = { ...progress, currentStageIndex: progress.currentStageIndex + 1, unlockedStageIndex: progress.currentStageIndex + 1 };
       setProgress(next); saveProgress(store, next);
     }
@@ -98,6 +101,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     const addedMinutes = r.durationMs / 60_000;
     const nextStreak = updateStreak(streak, todayISO, addedMinutes);
     setStreak(nextStreak); saveStreak(store, nextStreak);
+    if (advanced || computeStars(r) === 3) setCelebrateTrigger(t => t + 1);
     setResult(r); setPhase('summary');
   };
 
@@ -114,6 +118,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
 
   return (
     <div className="trainer-mode">
+      <Celebration trigger={celebrateTrigger} />
       <div className="trainer-topbar">
         <button onClick={onExit}>Exit trainer</button>
         <div className="mode-toggle" role="group" aria-label="Practice mode">
@@ -158,8 +163,17 @@ const TypingSession: React.FC<{
   stats: Record<KeyCode, KeyStat>; guidance: Settings['guidanceMode'];
   onComplete: (log: SessionLog) => void;
 }> = ({ source, target, strictness, stats, guidance, onComplete }) => {
-  const s = useTypingSession({ source, target, strictness, onComplete });
-  const view = buildKeyboardView({ nextCode: s.nextCode, statsByCode: stats, guidance });
+  const { faultClass, flash } = useFaultFlash();
+  // Remembers which key the flash belongs to: in markThrough mode `index` (and thus
+  // `nextCode`) advances past the mistyped position on the very keystroke that triggers
+  // the flash, so `s.nextCode` at render time would otherwise point at the wrong key.
+  const lastFaultCodeRef = useRef<KeyCode | null>(null);
+  const s = useTypingSession({
+    source, target, strictness, onComplete,
+    onError: (code) => { lastFaultCodeRef.current = code; flash(); },
+  });
+  const faultCode = faultClass ? lastFaultCodeRef.current : null;
+  const view = buildKeyboardView({ nextCode: s.nextCode, statsByCode: stats, guidance, faultCode });
   return (
     <>
       <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} />

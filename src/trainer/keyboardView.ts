@@ -3,9 +3,12 @@ import { HE_LAYOUT } from './data/hebrewLayout';
 import { confidenceFor } from './engine/confidence';
 import { GATE } from './engine/gating';
 
-interface ViewOpts { nextCode: KeyCode | null; statsByCode: Record<KeyCode, KeyStat>; guidance: GuidanceMode }
+interface ViewOpts {
+  nextCode: KeyCode | null; statsByCode: Record<KeyCode, KeyStat>; guidance: GuidanceMode;
+  faultCode?: KeyCode | null; // optional: the key to flash `key-fault` on (see useFaultFlash)
+}
 
-export function buildKeyboardView({ nextCode, statsByCode, guidance }: ViewOpts): KeyboardView {
+export function buildKeyboardView({ nextCode, statsByCode, guidance, faultCode = null }: ViewOpts): KeyboardView {
   const view: KeyboardView = {};
   for (const key of HE_LAYOUT) {
     const stat = statsByCode[key.code];
@@ -17,7 +20,7 @@ export function buildKeyboardView({ nextCode, statsByCode, guidance }: ViewOpts)
       else if (guidance === 'dim') dim = true;
       else if (guidance === 'auto') hidden = conf >= GATE.minConfidence;
     }
-    view[key.componentId] = { heat: conf, finger: key.finger, isNextTarget: isNext, hidden, dim };
+    view[key.componentId] = { heat: conf, finger: key.finger, isNextTarget: isNext, hidden, dim, fault: key.code === faultCode };
   }
   return view;
 }

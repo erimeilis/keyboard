@@ -3,7 +3,13 @@ import type { KeySource, KeyEvent, KeyCode, Strictness, SessionLog, PosOutcome }
 import { codeForLetter, letterForCode } from './data/hebrewLayout';
 import { detectRealWordMistake } from './errors';
 
-interface UseSessionOpts { source: KeySource; target: string; strictness: Strictness; onComplete: (log: SessionLog) => void }
+interface UseSessionOpts {
+  source: KeySource; target: string; strictness: Strictness; onComplete: (log: SessionLog) => void;
+  // Optional, additive: fired on every wrong-key press (both strictness modes) with the
+  // expected KeyCode at that position, so callers can flash the right key even in
+  // markThrough mode where `index` advances past the mistyped position immediately.
+  onError?: (expectedCode: KeyCode) => void;
+}
 interface Mistake { expected: string; typed: string }
 interface SessionState {
   index: number;
@@ -37,7 +43,7 @@ function buildExpected(target: string): { codes: KeyCode[]; wordOf: number[]; wo
 }
 
 export function useTypingSession(opts: UseSessionOpts): SessionState {
-  const { source, target, strictness, onComplete } = opts;
+  const { source, target, strictness, onComplete, onError } = opts;
   const { codes, wordOf, wordTexts, wordPos } = buildExpected(target);
 
   const [index, setIndex] = useState(0);
@@ -61,6 +67,8 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
   strictnessRef.current = strictness;
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useEffect(() => {
     // (Re)starting for a new target: wipe any state left over from a
@@ -118,6 +126,7 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
           onCompleteRef.current({ words: words.filter(Boolean), startTs: startTs.current!, endTs: e.ts });
         }
       } else {
+        onErrorRef.current?.(codes[i]); // fires for every wrong keystroke, in both strictness modes
         const isFirstErrorAtPos = !hadErrorHere.current;
         hadErrorHere.current = true;
         setStatuses(s => { const n = [...s]; n[i] = 'error'; return n; });

@@ -20,4 +20,12 @@ describe('buildKeyboardView', () => {
     expect(v['ks'].hidden).toBe(true);
     expect(v['ka'].hidden).toBeFalsy();
   });
+  it('marks the faulted key when faultCode is set, and no key otherwise', () => {
+    const withFault = buildKeyboardView({ nextCode: 'KeyA', statsByCode: {}, guidance: 'full', faultCode: 'KeyA' });
+    expect(withFault['ka'].fault).toBe(true);
+    expect(withFault['ks'].fault).toBeFalsy();
+
+    const withoutFault = buildKeyboardView({ nextCode: 'KeyA', statsByCode: {}, guidance: 'full' });
+    expect(withoutFault['ka'].fault).toBeFalsy();
+  });
 });

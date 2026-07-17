@@ -65,6 +65,7 @@ export interface TrainerKeyView {
   finger?: FingerId;
   dim?: boolean;
   hidden?: boolean;
+  fault?: boolean;       // brief `key-fault` flash on a wrong keystroke (see useFaultFlash)
 }
 export type KeyboardView = Record<ComponentId, TrainerKeyView>;
 

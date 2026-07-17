@@ -84,4 +84,23 @@ describe('useTypingSession', () => {
     const log: SessionLog = onComplete.mock.calls[0][0];
     expect(log.words[0][0]).toMatchObject({ code: 'KeyK', firstTryCorrect: false });
   });
+
+  it('markThrough: an error at one position does not leak into the next position\'s firstTryCorrect', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    // target "לוד" -> KeyK, KeyU, KeyS (3 positions)
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'לוד', strictness: 'markThrough', onComplete }));
+    press('KeyX', 100);              // wrong for position 0 (KeyK), markThrough advances anyway
+    expect(result.current.index).toBe(1);
+    expect(result.current.statuses[0]).toBe('error');
+    press('KeyU', 200);              // correct on the FIRST try for position 1
+    expect(result.current.index).toBe(2);
+    expect(result.current.statuses[1]).toBe('correct');
+    press('KeyS', 300);              // correct for position 2, completes the session
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    const log: SessionLog = onComplete.mock.calls[0][0];
+    expect(log.words[0][0]).toMatchObject({ code: 'KeyK', firstTryCorrect: false });
+    // The error at position 0 must not leak forward: position 1 was correct on the first try.
+    expect(log.words[0][1]).toMatchObject({ code: 'KeyU', firstTryCorrect: true });
+  });
 });

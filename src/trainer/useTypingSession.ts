@@ -73,6 +73,7 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
         if (strictnessRef.current === 'markThrough') {
           outcomes.current.push({ code: codes[i], firstTryCorrect: false, latencyMs: 0 });
           const next = i + 1; idx.current = next; setIndex(next);
+          hadErrorHere.current = false;
         }
       }
     };

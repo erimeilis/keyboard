@@ -25,3 +25,9 @@
   20% { opacity: 1; }
   100% { opacity: 0; transform: scale(1.1); background: radial-gradient(circle, rgba(74,222,128,0.35), transparent 70%); }
 }
+
+.theme-bg { position: absolute; inset: 0; z-index: -1; opacity: 0.25; transition: background 400ms ease; }
+.theme-default { background: #0f172a; }
+.theme-sea { background: linear-gradient(#0ea5e9, #0369a1); }
+.theme-space { background: radial-gradient(circle at 30% 20%, #312e81, #020617); }
+.theme-wisdom { background: linear-gradient(#7c3aed, #4c1d95); }

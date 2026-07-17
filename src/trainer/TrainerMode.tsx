@@ -9,6 +9,7 @@ import { CustomText } from './CustomText';
 import { useTypingSession } from './useTypingSession';
 import { Celebration, useFaultFlash } from './Celebration';
 import { GhostBar } from './GhostBar';
+import { ThemeBackground } from './ThemeBackground';
 import { buildGhost, isFasterGhost } from './ghost';
 import { buildKeyboardView } from './keyboardView';
 import { computeSessionResult } from './scoring';
@@ -68,11 +69,13 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     return () => { invoke('set_trainer_mode', { active: false }).catch(console.error); };
   }, []);
 
-  const target = useMemo(() => {
-    if (fixedTarget != null) return fixedTarget;
+  // text and theme must come from the same selectSentence() call — computing them
+  // via two separate memoized calls could desync (different rng draw) across renders.
+  const targetInfo = useMemo<{ text: string; theme: string }>(() => {
+    if (fixedTarget != null) return { text: fixedTarget, theme: 'default' };
     // Custom mode: the sanitized pasted text is the fixed session target —
     // never re-derived from the curriculum/corpus selection below.
-    if (mode === 'custom') return customText;
+    if (mode === 'custom') return { text: customText, theme: 'default' };
     const unlocked = unlockedCodesForStage(progress.currentStageIndex);
     const confByCode: Record<KeyCode, number> = {};
     for (const [code, st] of Object.entries(stats)) confByCode[code] = confidenceFor(st);
@@ -83,11 +86,16 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     const preferProse = mode === 'prose' || (mode === 'words' && progress.currentStageIndex >= SOFIT_STAGE_INDEX);
     if (preferProse) {
       const sentence = selectSentence({ unlocked, corpus: PROSE_HE, rng: Math.random });
-      if (sentence) return sentence.text;
+      if (sentence) return { text: sentence.text, theme: sentence.theme };
     }
     const corpus = mode === 'drills' ? [] : COMMON_WORDS_HE;
-    return selectPractice({ unlocked, confByCode, corpus, targetChars: 40, rng: Math.random });
+    return {
+      text: selectPractice({ unlocked, confByCode, corpus, targetChars: 40, rng: Math.random }),
+      theme: 'default',
+    };
   }, [progress.currentStageIndex, stats, fixedTarget, phase, mode, customText]);
+  const target = targetInfo.text;
+  const theme = targetInfo.theme;
 
   const finishSession = (log: SessionLog) => {
     const r = computeSessionResult(log);
@@ -158,7 +166,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
       ) : (
         <>
           {mode === 'custom' && <CustomText onUse={setCustomText} />}
-          <TypingSession source={source} target={target} strictness={settings.strictness}
+          <TypingSession source={source} target={target} theme={theme} strictness={settings.strictness}
             stats={stats} guidance={settings.guidanceMode} onComplete={finishSession}
             ghost={ghosts[progress.currentStageIndex] ?? []} />
         </>
@@ -169,11 +177,11 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
 
 // Inner component so the session hook can drive the keyboard view.
 const TypingSession: React.FC<{
-  source: KeySource; target: string; strictness: Settings['strictness'];
+  source: KeySource; target: string; theme: string; strictness: Settings['strictness'];
   stats: Record<KeyCode, KeyStat>; guidance: Settings['guidanceMode'];
   onComplete: (log: SessionLog) => void;
   ghost: number[];
-}> = ({ source, target, strictness, stats, guidance, onComplete, ghost }) => {
+}> = ({ source, target, theme, strictness, stats, guidance, onComplete, ghost }) => {
   const { faultClass, flash } = useFaultFlash();
   // Remembers which key the flash belongs to: in markThrough mode `index` (and thus
   // `nextCode`) advances past the mistyped position on the very keystroke that triggers
@@ -205,6 +213,7 @@ const TypingSession: React.FC<{
   return (
     <>
       <GhostBar ghost={ghost} elapsedMs={elapsedMs} total={s.expectedCodes.length} />
+      <ThemeBackground theme={theme} />
       <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} />
       <Keyboard trainerView={view} />
     </>

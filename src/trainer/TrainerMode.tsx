@@ -4,6 +4,7 @@ import { Keyboard } from '../components/Keyboard';
 import { PracticePanel } from './PracticePanel';
 import { SessionSummary } from './SessionSummary';
 import { PlacementTest } from './PlacementTest';
+import { CustomText } from './CustomText';
 import { useTypingSession } from './useTypingSession';
 import { buildKeyboardView } from './keyboardView';
 import { computeSessionResult } from './scoring';
@@ -23,7 +24,7 @@ import { TauriTapKeySource } from './keySource/TauriTapKeySource';
 import type { KeySource, KeyCode, KeyStat, Settings, SessionLog, SessionResult } from './types';
 import './trainer.css';
 
-type PracticeMode = 'drills' | 'words' | 'prose';
+type PracticeMode = 'drills' | 'words' | 'prose' | 'custom';
 
 interface Props {
   onExit: () => void;
@@ -42,6 +43,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   );
   const [result, setResult] = useState<SessionResult | null>(null);
   const [mode, setMode] = useState<PracticeMode>('words');
+  const [customText, setCustomText] = useState('');
 
   const source = useMemo<KeySource>(
     () => (makeSource ? makeSource(settings)
@@ -56,6 +58,9 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
 
   const target = useMemo(() => {
     if (fixedTarget != null) return fixedTarget;
+    // Custom mode: the sanitized pasted text is the fixed session target —
+    // never re-derived from the curriculum/corpus selection below.
+    if (mode === 'custom') return customText;
     const unlocked = unlockedCodesForStage(progress.currentStageIndex);
     const confByCode: Record<KeyCode, number> = {};
     for (const [code, st] of Object.entries(stats)) confByCode[code] = confidenceFor(st);
@@ -70,7 +75,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     }
     const corpus = mode === 'drills' ? [] : COMMON_WORDS_HE;
     return selectPractice({ unlocked, confByCode, corpus, targetChars: 40, rng: Math.random });
-  }, [progress.currentStageIndex, stats, fixedTarget, phase, mode]);
+  }, [progress.currentStageIndex, stats, fixedTarget, phase, mode, customText]);
 
   const finishSession = (log: SessionLog) => {
     const r = computeSessionResult(log);
@@ -99,7 +104,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
       <div className="trainer-topbar">
         <button onClick={onExit}>Exit trainer</button>
         <div className="mode-toggle" role="group" aria-label="Practice mode">
-          {(['drills', 'words', 'prose'] as const).map(m => (
+          {(['drills', 'words', 'prose', 'custom'] as const).map(m => (
             <button
               key={m}
               type="button"
@@ -107,7 +112,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
               aria-pressed={m === mode}
               onClick={() => setMode(m)}
             >
-              {m === 'drills' ? 'Drills' : m === 'words' ? 'Words' : 'Prose'}
+              {m === 'drills' ? 'Drills' : m === 'words' ? 'Words' : m === 'prose' ? 'Prose' : 'Custom'}
             </button>
           ))}
         </div>
@@ -118,8 +123,11 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
           <Keyboard />
         </>
       ) : (
-        <TypingSession source={source} target={target} strictness={settings.strictness}
-          stats={stats} guidance={settings.guidanceMode} onComplete={finishSession} />
+        <>
+          {mode === 'custom' && <CustomText onUse={setCustomText} />}
+          <TypingSession source={source} target={target} strictness={settings.strictness}
+            stats={stats} guidance={settings.guidanceMode} onComplete={finishSession} />
+        </>
       )}
     </div>
   );

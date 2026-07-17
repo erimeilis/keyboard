@@ -8,3 +8,5 @@
 .trainer-topbar { display: flex; justify-content: space-between; align-items: center; }
 .mode-toggle { display: flex; gap: 4px; }
 .mode-toggle button.active { font-weight: 700; text-decoration: underline; }
+.custom-text { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
+.custom-text textarea { min-height: 60px; font-size: 16px; direction: rtl; resize: vertical; }

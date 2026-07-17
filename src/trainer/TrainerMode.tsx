@@ -7,9 +7,10 @@ import { PlacementTest } from './PlacementTest';
 import { useTypingSession } from './useTypingSession';
 import { buildKeyboardView } from './keyboardView';
 import { computeSessionResult } from './scoring';
-import { selectPractice } from './textSelection';
+import { selectPractice, selectSentence } from './textSelection';
 import { COMMON_WORDS_HE } from './data/words.he';
-import { unlockedCodesForStage } from './curriculum';
+import { PROSE_HE } from './data/prose.he';
+import { unlockedCodesForStage, SOFIT_STAGE_INDEX } from './curriculum';
 import { confidenceFor } from './engine/confidence';
 import { canAdvance } from './engine/gating';
 import { createLocalStorageStore } from './storage';
@@ -21,6 +22,8 @@ import { DomKeySource } from './keySource/DomKeySource';
 import { TauriTapKeySource } from './keySource/TauriTapKeySource';
 import type { KeySource, KeyCode, KeyStat, Settings, SessionLog, SessionResult } from './types';
 import './trainer.css';
+
+type PracticeMode = 'drills' | 'words' | 'prose';
 
 interface Props {
   onExit: () => void;
@@ -38,6 +41,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     () => (Object.keys(loadStats(store)).length === 0 ? 'placement' : 'typing'),
   );
   const [result, setResult] = useState<SessionResult | null>(null);
+  const [mode, setMode] = useState<PracticeMode>('words');
 
   const source = useMemo<KeySource>(
     () => (makeSource ? makeSource(settings)
@@ -55,8 +59,18 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     const unlocked = unlockedCodesForStage(progress.currentStageIndex);
     const confByCode: Record<KeyCode, number> = {};
     for (const [code, st] of Object.entries(stats)) confByCode[code] = confidenceFor(st);
-    return selectPractice({ unlocked, confByCode, corpus: COMMON_WORDS_HE, targetChars: 40, rng: Math.random });
-  }, [progress.currentStageIndex, stats, fixedTarget, phase]);
+
+    // Prose mode is explicit; "words" mode also graduates to sentences once the
+    // curriculum reaches sofit finals. "drills" is a deliberate raw-letter drill
+    // override, so it never gets silently swapped for a sentence.
+    const preferProse = mode === 'prose' || (mode === 'words' && progress.currentStageIndex >= SOFIT_STAGE_INDEX);
+    if (preferProse) {
+      const sentence = selectSentence({ unlocked, corpus: PROSE_HE, rng: Math.random });
+      if (sentence) return sentence.text;
+    }
+    const corpus = mode === 'drills' ? [] : COMMON_WORDS_HE;
+    return selectPractice({ unlocked, confByCode, corpus, targetChars: 40, rng: Math.random });
+  }, [progress.currentStageIndex, stats, fixedTarget, phase, mode]);
 
   const finishSession = (log: SessionLog) => {
     const r = computeSessionResult(log);
@@ -82,7 +96,22 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
 
   return (
     <div className="trainer-mode">
-      <div className="trainer-topbar"><button onClick={onExit}>Exit trainer</button></div>
+      <div className="trainer-topbar">
+        <button onClick={onExit}>Exit trainer</button>
+        <div className="mode-toggle" role="group" aria-label="Practice mode">
+          {(['drills', 'words', 'prose'] as const).map(m => (
+            <button
+              key={m}
+              type="button"
+              className={m === mode ? 'active' : ''}
+              aria-pressed={m === mode}
+              onClick={() => setMode(m)}
+            >
+              {m === 'drills' ? 'Drills' : m === 'words' ? 'Words' : 'Prose'}
+            </button>
+          ))}
+        </div>
+      </div>
       {phase === 'summary' && result ? (
         <>
           <SessionSummary result={result} onNext={() => { setResult(null); setPhase('typing'); }} />

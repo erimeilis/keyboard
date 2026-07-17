@@ -54,6 +54,17 @@ export interface SelectOpts {
   rng: () => number;
 }
 
+export function selectSentence(opts: {
+  unlocked: Set<KeyCode>;
+  corpus: Array<{ text: string; theme: string; source: string }>;
+  rng: () => number;
+}): { text: string; theme: string } | null {
+  const typable = opts.corpus.filter(p => wordIsTypable(p.text.replace(/ /g, ''), opts.unlocked));
+  if (typable.length === 0) return null;
+  const pick = typable[Math.floor(opts.rng() * typable.length)];
+  return { text: pick.text, theme: pick.theme };
+}
+
 export function selectPractice(opts: SelectOpts): string {
   const { unlocked, confByCode, corpus, targetChars, rng } = opts;
   const typable = corpus.filter(w => wordIsTypable(w, unlocked));

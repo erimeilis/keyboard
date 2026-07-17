@@ -1,0 +1,39 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+
+// vi.mock factories are hoisted above top-level statements, so a plain `const invoke =
+// vi.fn()` referenced inside the factory throws "Cannot access before initialization"
+// on this vitest version. vi.hoisted() defines the mock in the same hoisted scope,
+// letting the factory reference the same fn instance.
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn(async () => {}) }));
+vi.mock('@tauri-apps/api/core', () => ({ invoke }));
+
+// TrainerMode renders <Keyboard/> (summary phase) which sets up a `keyboard-state`
+// listener via @tauri-apps/api/event — mock it so mounting doesn't leave an unhandled
+// rejection dangling (see Keyboard.test.tsx for the same pattern).
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn((_event, _callback) => Promise.resolve(() => {})),
+}));
+
+import { TrainerMode } from './TrainerMode';
+import { createMemoryStore } from './storage';
+import type { KeySource, KeyEvent } from './types';
+
+function fakeSource() {
+  let cb: ((e: KeyEvent) => void) | null = null;
+  const src: KeySource = { start: f => { cb = f; }, stop: () => { cb = null; } };
+  return { src, press: (code: string, ts: number) => act(() => cb!({ code, ts, down: true })) };
+}
+
+describe('TrainerMode loop', () => {
+  it('runs a session and shows a summary on completion', () => {
+    const store = createMemoryStore();
+    // Pre-seed progress past placement so it goes straight to a session with known text.
+    store.set('trainer.progress', { unlockedStageIndex: 0, currentStageIndex: 0, bestByStage: {} });
+    store.set('trainer.stats', { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } });
+    const { src, press } = fakeSource();
+    render(<TrainerMode onExit={() => {}} store={store} makeSource={() => src} fixedTarget="כ" />);
+    press('KeyF', 100); // 'כ' == KeyF
+    expect(screen.getByText(/WPM/i)).toBeTruthy();
+  });
+});

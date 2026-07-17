@@ -1,20 +1,113 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Keyboard } from '../components/Keyboard';
+import { PracticePanel } from './PracticePanel';
+import { SessionSummary } from './SessionSummary';
+import { PlacementTest } from './PlacementTest';
+import { useTypingSession } from './useTypingSession';
+import { buildKeyboardView } from './keyboardView';
+import { computeSessionResult } from './scoring';
+import { selectPractice } from './textSelection';
+import { COMMON_WORDS_HE } from './data/words.he';
+import { unlockedCodesForStage } from './curriculum';
+import { confidenceFor } from './engine/confidence';
+import { canAdvance } from './engine/gating';
+import { createLocalStorageStore } from './storage';
+import type { TrainerStore } from './storage';
+import {
+  loadSettings, loadProgress, saveProgress, loadStats, saveStats, mergeSessionStats,
+} from './useTrainerState';
+import { DomKeySource } from './keySource/DomKeySource';
+import { TauriTapKeySource } from './keySource/TauriTapKeySource';
+import type { KeySource, KeyCode, KeyStat, Settings, SessionLog, SessionResult } from './types';
+import './trainer.css';
 
-export const TrainerMode: React.FC<{ onExit: () => void }> = ({ onExit }) => {
+interface Props {
+  onExit: () => void;
+  store?: TrainerStore;
+  makeSource?: (s: Settings) => KeySource;
+  fixedTarget?: string; // test hook; when set, skip selection randomness
+}
+
+export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSource, fixedTarget }) => {
+  const store = useMemo(() => injStore ?? createLocalStorageStore(), [injStore]);
+  const settings = useMemo(() => loadSettings(store), [store]);
+  const [progress, setProgress] = useState(() => loadProgress(store));
+  const [stats, setStats] = useState<Record<KeyCode, KeyStat>>(() => loadStats(store));
+  const [phase, setPhase] = useState<'placement' | 'typing' | 'summary'>(
+    () => (Object.keys(loadStats(store)).length === 0 ? 'placement' : 'typing'),
+  );
+  const [result, setResult] = useState<SessionResult | null>(null);
+
+  const source = useMemo<KeySource>(
+    () => (makeSource ? makeSource(settings)
+      : settings.captureSource === 'tap' ? new TauriTapKeySource() : new DomKeySource()),
+    [makeSource, settings],
+  );
+
   useEffect(() => {
     invoke('set_trainer_mode', { active: true }).catch(console.error);
     return () => { invoke('set_trainer_mode', { active: false }).catch(console.error); };
   }, []);
 
+  const target = useMemo(() => {
+    if (fixedTarget != null) return fixedTarget;
+    const unlocked = unlockedCodesForStage(progress.currentStageIndex);
+    const confByCode: Record<KeyCode, number> = {};
+    for (const [code, st] of Object.entries(stats)) confByCode[code] = confidenceFor(st);
+    return selectPractice({ unlocked, confByCode, corpus: COMMON_WORDS_HE, targetChars: 40, rng: Math.random });
+  }, [progress.currentStageIndex, stats, fixedTarget, phase]);
+
+  const finishSession = (log: SessionLog) => {
+    const r = computeSessionResult(log);
+    const merged = mergeSessionStats(stats, r);
+    setStats(merged); saveStats(store, merged);
+    if (canAdvance(progress.currentStageIndex, merged)) {
+      const next = { ...progress, currentStageIndex: progress.currentStageIndex + 1, unlockedStageIndex: progress.currentStageIndex + 1 };
+      setProgress(next); saveProgress(store, next);
+    }
+    setResult(r); setPhase('summary');
+  };
+
+  if (phase === 'placement') {
+    return (
+      <div className="trainer-mode">
+        <div className="trainer-topbar"><button onClick={onExit}>Exit trainer</button></div>
+        <PlacementTest source={source} onDone={(seed) => {
+          const next = { ...progress, ...seed }; setProgress(next); saveProgress(store, next); setPhase('typing');
+        }} />
+      </div>
+    );
+  }
+
   return (
     <div className="trainer-mode">
-      <div className="trainer-topbar">
-        <button onClick={onExit}>Exit trainer</button>
-      </div>
-      <div className="trainer-panel">{/* PracticePanel mounts here in Task 21 */}</div>
-      <Keyboard />
+      <div className="trainer-topbar"><button onClick={onExit}>Exit trainer</button></div>
+      {phase === 'summary' && result ? (
+        <>
+          <SessionSummary result={result} onNext={() => { setResult(null); setPhase('typing'); }} />
+          <Keyboard />
+        </>
+      ) : (
+        <TypingSession source={source} target={target} strictness={settings.strictness}
+          stats={stats} guidance={settings.guidanceMode} onComplete={finishSession} />
+      )}
     </div>
+  );
+};
+
+// Inner component so the session hook can drive the keyboard view.
+const TypingSession: React.FC<{
+  source: KeySource; target: string; strictness: Settings['strictness'];
+  stats: Record<KeyCode, KeyStat>; guidance: Settings['guidanceMode'];
+  onComplete: (log: SessionLog) => void;
+}> = ({ source, target, strictness, stats, guidance, onComplete }) => {
+  const s = useTypingSession({ source, target, strictness, onComplete });
+  const view = buildKeyboardView({ nextCode: s.nextCode, statsByCode: stats, guidance });
+  return (
+    <>
+      <PracticePanel target={target} statuses={s.statuses} index={s.index} />
+      <Keyboard trainerView={view} />
+    </>
   );
 };

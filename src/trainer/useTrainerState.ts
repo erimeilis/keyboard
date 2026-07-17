@@ -35,6 +35,13 @@ export function saveStreak(store: TrainerStore, s: StreakState): void {
   store.set(STORAGE_KEYS.streak, s);
 }
 
+export function loadGhosts(store: TrainerStore): Record<number, number[]> {
+  return store.get<Record<number, number[]>>(STORAGE_KEYS.ghosts, {});
+}
+export function saveGhosts(store: TrainerStore, ghosts: Record<number, number[]>): void {
+  store.set(STORAGE_KEYS.ghosts, ghosts);
+}
+
 export type HistoryEntry = { wpm: number; accuracy: number };
 
 export function loadHistory(store: TrainerStore): HistoryEntry[] {

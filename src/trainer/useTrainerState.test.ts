@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createMemoryStore } from './storage';
 import {
   loadSettings, saveSettings, mergeSessionStats, loadStats, saveStats, loadHistory, saveHistory,
-  loadStreak, saveStreak,
+  loadStreak, saveStreak, loadGhosts, saveGhosts,
 } from './useTrainerState';
 import type { SessionResult, KeyStat } from './types';
 
@@ -44,5 +44,13 @@ describe('trainer state', () => {
     const streak = { lastPracticedISO: '2026-07-16', current: 2, longest: 3, todayMinutes: 5 };
     saveStreak(store, streak);
     expect(loadStreak(store)).toEqual(streak);
+  });
+
+  it('defaults to no ghosts and round-trips per-stage ghosts through the store', () => {
+    const store = createMemoryStore();
+    expect(loadGhosts(store)).toEqual({});
+    const ghosts = { 0: [100, 250, 500], 1: [80, 160] };
+    saveGhosts(store, ghosts);
+    expect(loadGhosts(store)).toEqual(ghosts);
   });
 });

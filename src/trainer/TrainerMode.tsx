@@ -8,6 +8,8 @@ import { PlacementTest } from './PlacementTest';
 import { CustomText } from './CustomText';
 import { useTypingSession } from './useTypingSession';
 import { Celebration, useFaultFlash } from './Celebration';
+import { GhostBar } from './GhostBar';
+import { buildGhost, isFasterGhost } from './ghost';
 import { buildKeyboardView } from './keyboardView';
 import { computeSessionResult } from './scoring';
 import { selectPractice, selectSentence } from './textSelection';
@@ -20,7 +22,7 @@ import { createLocalStorageStore } from './storage';
 import type { TrainerStore } from './storage';
 import {
   loadSettings, loadProgress, saveProgress, loadStats, saveStats, mergeSessionStats,
-  loadHistory, saveHistory, loadStreak, saveStreak,
+  loadHistory, saveHistory, loadStreak, saveStreak, loadGhosts, saveGhosts,
 } from './useTrainerState';
 import type { HistoryEntry } from './useTrainerState';
 import { updateStreak } from './streak';
@@ -50,6 +52,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   const [result, setResult] = useState<SessionResult | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory(store));
   const [streak, setStreak] = useState<StreakState>(() => loadStreak(store));
+  const [ghosts, setGhosts] = useState<Record<number, number[]>>(() => loadGhosts(store));
   const [mode, setMode] = useState<PracticeMode>('words');
   const [customText, setCustomText] = useState('');
   const [celebrateTrigger, setCelebrateTrigger] = useState(0);
@@ -90,6 +93,12 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     const r = computeSessionResult(log);
     const merged = mergeSessionStats(stats, r);
     setStats(merged); saveStats(store, merged);
+    const stageIndex = progress.currentStageIndex;
+    const newGhost = buildGhost(log);
+    if (isFasterGhost(newGhost, ghosts[stageIndex])) {
+      const nextGhosts = { ...ghosts, [stageIndex]: newGhost };
+      setGhosts(nextGhosts); saveGhosts(store, nextGhosts);
+    }
     const advanced = canAdvance(progress.currentStageIndex, merged);
     if (advanced) {
       const next = { ...progress, currentStageIndex: progress.currentStageIndex + 1, unlockedStageIndex: progress.currentStageIndex + 1 };
@@ -150,7 +159,8 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
         <>
           {mode === 'custom' && <CustomText onUse={setCustomText} />}
           <TypingSession source={source} target={target} strictness={settings.strictness}
-            stats={stats} guidance={settings.guidanceMode} onComplete={finishSession} />
+            stats={stats} guidance={settings.guidanceMode} onComplete={finishSession}
+            ghost={ghosts[progress.currentStageIndex] ?? []} />
         </>
       )}
     </div>
@@ -162,7 +172,8 @@ const TypingSession: React.FC<{
   source: KeySource; target: string; strictness: Settings['strictness'];
   stats: Record<KeyCode, KeyStat>; guidance: Settings['guidanceMode'];
   onComplete: (log: SessionLog) => void;
-}> = ({ source, target, strictness, stats, guidance, onComplete }) => {
+  ghost: number[];
+}> = ({ source, target, strictness, stats, guidance, onComplete, ghost }) => {
   const { faultClass, flash } = useFaultFlash();
   // Remembers which key the flash belongs to: in markThrough mode `index` (and thus
   // `nextCode`) advances past the mistyped position on the very keystroke that triggers
@@ -174,8 +185,26 @@ const TypingSession: React.FC<{
   });
   const faultCode = faultClass ? lastFaultCodeRef.current : null;
   const view = buildKeyboardView({ nextCode: s.nextCode, statsByCode: stats, guidance, faultCode });
+
+  // Ghost-race clock: wall time since this session's text was set, driven by
+  // requestAnimationFrame. Lives here (not in useTypingSession) so it never
+  // touches the KeySource/session-completion logic; resets whenever a new
+  // target starts and is always cancelled on unmount or target change.
+  const [elapsedMs, setElapsedMs] = useState(0);
+  useEffect(() => {
+    const sessionStart = performance.now();
+    setElapsedMs(0);
+    let frame = requestAnimationFrame(tick);
+    function tick(now: number) {
+      setElapsedMs(now - sessionStart);
+      frame = requestAnimationFrame(tick);
+    }
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
   return (
     <>
+      <GhostBar ghost={ghost} elapsedMs={elapsedMs} total={s.expectedCodes.length} />
       <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} />
       <Keyboard trainerView={view} />
     </>

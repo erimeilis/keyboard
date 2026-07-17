@@ -19,12 +19,14 @@ import { createLocalStorageStore } from './storage';
 import type { TrainerStore } from './storage';
 import {
   loadSettings, loadProgress, saveProgress, loadStats, saveStats, mergeSessionStats,
-  loadHistory, saveHistory,
+  loadHistory, saveHistory, loadStreak, saveStreak,
 } from './useTrainerState';
 import type { HistoryEntry } from './useTrainerState';
+import { updateStreak } from './streak';
+import { computeStars } from './stars';
 import { DomKeySource } from './keySource/DomKeySource';
 import { TauriTapKeySource } from './keySource/TauriTapKeySource';
-import type { KeySource, KeyCode, KeyStat, Settings, SessionLog, SessionResult } from './types';
+import type { KeySource, KeyCode, KeyStat, Settings, SessionLog, SessionResult, StreakState } from './types';
 import './trainer.css';
 
 type PracticeMode = 'drills' | 'words' | 'prose' | 'custom';
@@ -46,6 +48,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   );
   const [result, setResult] = useState<SessionResult | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory(store));
+  const [streak, setStreak] = useState<StreakState>(() => loadStreak(store));
   const [mode, setMode] = useState<PracticeMode>('words');
   const [customText, setCustomText] = useState('');
 
@@ -91,6 +94,10 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     }
     const nextHistory = [...history, { wpm: r.wpm, accuracy: r.accuracy }].slice(-100);
     setHistory(nextHistory); saveHistory(store, nextHistory);
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const addedMinutes = r.durationMs / 60_000;
+    const nextStreak = updateStreak(streak, todayISO, addedMinutes);
+    setStreak(nextStreak); saveStreak(store, nextStreak);
     setResult(r); setPhase('summary');
   };
 
@@ -125,7 +132,12 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
       </div>
       {phase === 'summary' && result ? (
         <>
-          <SessionSummary result={result} onNext={() => { setResult(null); setPhase('typing'); }} />
+          <SessionSummary
+            result={result}
+            onNext={() => { setResult(null); setPhase('typing'); }}
+            streak={streak}
+            stars={computeStars(result)}
+          />
           <StatsView history={history} />
           <Keyboard />
         </>

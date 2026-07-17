@@ -1,6 +1,6 @@
 import type { TrainerStore } from './storage';
 import { STORAGE_KEYS } from './storage';
-import type { Settings, Progress, KeyStat, SessionResult, KeyCode } from './types';
+import type { Settings, Progress, KeyStat, SessionResult, KeyCode, StreakState } from './types';
 import { DEFAULT_SETTINGS } from './types';
 
 const LATENCY_WINDOW = 20;
@@ -24,6 +24,15 @@ export function loadStats(store: TrainerStore): Record<KeyCode, KeyStat> {
 }
 export function saveStats(store: TrainerStore, stats: Record<KeyCode, KeyStat>): void {
   store.set(STORAGE_KEYS.stats, stats);
+}
+
+const DEFAULT_STREAK: StreakState = { lastPracticedISO: null, current: 0, longest: 0, todayMinutes: 0 };
+
+export function loadStreak(store: TrainerStore): StreakState {
+  return store.get<StreakState>(STORAGE_KEYS.streak, DEFAULT_STREAK);
+}
+export function saveStreak(store: TrainerStore, s: StreakState): void {
+  store.set(STORAGE_KEYS.streak, s);
 }
 
 export type HistoryEntry = { wpm: number; accuracy: number };

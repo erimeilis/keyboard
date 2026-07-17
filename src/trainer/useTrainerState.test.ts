@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createMemoryStore } from './storage';
 import {
   loadSettings, saveSettings, mergeSessionStats, loadStats, saveStats, loadHistory, saveHistory,
+  loadStreak, saveStreak,
 } from './useTrainerState';
 import type { SessionResult, KeyStat } from './types';
 
@@ -35,5 +36,13 @@ describe('trainer state', () => {
     const history = [{ wpm: 40, accuracy: 0.9 }, { wpm: 45, accuracy: 0.95 }];
     saveHistory(store, history);
     expect(loadHistory(store)).toEqual(history);
+  });
+
+  it('defaults to a zeroed streak and round-trips through the store', () => {
+    const store = createMemoryStore();
+    expect(loadStreak(store)).toEqual({ lastPracticedISO: null, current: 0, longest: 0, todayMinutes: 0 });
+    const streak = { lastPracticedISO: '2026-07-16', current: 2, longest: 3, todayMinutes: 5 };
+    saveStreak(store, streak);
+    expect(loadStreak(store)).toEqual(streak);
   });
 });

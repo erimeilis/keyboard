@@ -150,7 +150,7 @@ const TypingSession: React.FC<{
   const view = buildKeyboardView({ nextCode: s.nextCode, statsByCode: stats, guidance });
   return (
     <>
-      <PracticePanel target={target} statuses={s.statuses} index={s.index} />
+      <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} />
       <Keyboard trainerView={view} />
     </>
   );

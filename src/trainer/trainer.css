@@ -1,3 +1,5 @@
+.mistake-callout { display: flex; align-items: center; justify-content: space-between; gap: 12px; direction: rtl; padding: 8px 12px; margin: 0 12px; background: rgba(250,204,21,0.15); border: 1px solid rgba(250,204,21,0.5); border-radius: 6px; color: #e5e7eb; font-size: 15px; }
+.mistake-callout button { background: none; border: none; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .practice-text { font-size: 28px; line-height: 1.6; direction: rtl; letter-spacing: 2px; padding: 12px; }
 .practice-char { padding: 0 1px; }
 .char-pending { color: #9ca3af; }

@@ -85,6 +85,44 @@ describe('useTypingSession', () => {
     expect(log.words[0][0]).toMatchObject({ code: 'KeyK', firstTryCorrect: false });
   });
 
+  it('markThrough: typing a wrong-but-real word sets lastMistake', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    // target "של" -> KeyA(ש), KeyK(ל). Missing the first key and instead
+    // pressing KeyG(ע) spells the real word "על" once KeyK(ל) follows.
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'של', strictness: 'markThrough', onComplete }));
+    expect(result.current.lastMistake).toBeNull();
+    press('KeyG', 100);              // wrong for KeyA, markThrough advances anyway
+    press('KeyK', 200);              // correct, completes the word/session
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(result.current.lastMistake).toEqual({ expected: 'של', typed: 'על' });
+  });
+
+  it('markThrough: a wrong-but-gibberish word does not set lastMistake', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    // target "לו" -> KeyK, KeyU. Typing KeyX(ס) then KeyU(ו) spells "סו", not a real word.
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'לו', strictness: 'markThrough', onComplete }));
+    press('KeyX', 100);
+    press('KeyU', 200);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(result.current.lastMistake).toBeNull();
+  });
+
+  it('stop mode: a single wrong keystroke that would spell a real word sets lastMistake without unblocking advance', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    // target "של" -> KeyA(ש), KeyK(ל). Pressing KeyG(ע) instead of KeyA hypothetically spells "על".
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'של', strictness: 'stop', onComplete }));
+    press('KeyG', 100);              // wrong, stop mode blocks advance
+    expect(result.current.index).toBe(0);
+    expect(result.current.statuses[0]).toBe('error');
+    expect(result.current.lastMistake).toEqual({ expected: 'של', typed: 'על' });
+    press('KeyA', 150);              // now correct
+    press('KeyK', 200);              // completes the session
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
   it('markThrough: an error at one position does not leak into the next position\'s firstTryCorrect', () => {
     const { src, press } = fakeSource();
     const onComplete = vi.fn();

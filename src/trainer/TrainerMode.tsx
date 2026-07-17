@@ -22,7 +22,7 @@ import { canAdvance } from './engine/gating';
 import { createLocalStorageStore } from './storage';
 import type { TrainerStore } from './storage';
 import {
-  loadSettings, loadProgress, saveProgress, loadStats, saveStats, mergeSessionStats,
+  loadSettings, saveSettings, loadProgress, saveProgress, loadStats, saveStats, mergeSessionStats,
   loadHistory, saveHistory, loadStreak, saveStreak, loadGhosts, saveGhosts,
 } from './useTrainerState';
 import type { HistoryEntry } from './useTrainerState';
@@ -44,7 +44,12 @@ interface Props {
 
 export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSource, fixedTarget }) => {
   const store = useMemo(() => injStore ?? createLocalStorageStore(), [injStore]);
-  const settings = useMemo(() => loadSettings(store), [store]);
+  const [settings, setSettings] = useState<Settings>(() => loadSettings(store));
+  const updateSettings = (patch: Partial<Settings>) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    saveSettings(store, next);
+  };
   const [progress, setProgress] = useState(() => loadProgress(store));
   const [stats, setStats] = useState<Record<KeyCode, KeyStat>>(() => loadStats(store));
   const [phase, setPhase] = useState<'placement' | 'typing' | 'summary'>(
@@ -58,10 +63,17 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   const [customText, setCustomText] = useState('');
   const [celebrateTrigger, setCelebrateTrigger] = useState(0);
 
+  // Deliberately keyed on captureSource only (not the whole `settings` object): guidance
+  // and strictness already flow live into each render (guidanceMode into buildKeyboardView,
+  // strictness via a ref inside useTypingSession), so rebuilding the KeySource for those
+  // changes would just churn objects for no behavioral gain. Note: changing captureSource
+  // mid-session only takes effect on the *next* session, since useTypingSession's
+  // subscription effect is scoped to `[target]`, not `[source]`.
   const source = useMemo<KeySource>(
     () => (makeSource ? makeSource(settings)
       : settings.captureSource === 'tap' ? new TauriTapKeySource() : new DomKeySource()),
-    [makeSource, settings],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [makeSource, settings.captureSource],
   );
 
   useEffect(() => {
@@ -151,6 +163,40 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
             </button>
           ))}
         </div>
+        <div className="settings-controls">
+          <label>
+            Guidance:
+            <select
+              value={settings.guidanceMode}
+              onChange={e => updateSettings({ guidanceMode: e.target.value as Settings['guidanceMode'] })}
+            >
+              <option value="full">Full</option>
+              <option value="auto">Auto</option>
+              <option value="dim">Dim</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </label>
+          <label>
+            Errors:
+            <select
+              value={settings.strictness}
+              onChange={e => updateSettings({ strictness: e.target.value as Settings['strictness'] })}
+            >
+              <option value="stop">Stop on error</option>
+              <option value="markThrough">Mark &amp; continue</option>
+            </select>
+          </label>
+          <label>
+            Capture:
+            <select
+              value={settings.captureSource}
+              onChange={e => updateSettings({ captureSource: e.target.value as Settings['captureSource'] })}
+            >
+              <option value="dom">In-app (focus)</option>
+              <option value="tap">Global tap</option>
+            </select>
+          </label>
+        </div>
       </div>
       {phase === 'summary' && result ? (
         <>
@@ -166,9 +212,13 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
       ) : (
         <>
           {mode === 'custom' && <CustomText onUse={setCustomText} />}
-          <TypingSession source={source} target={target} theme={theme} strictness={settings.strictness}
-            stats={stats} guidance={settings.guidanceMode} onComplete={finishSession}
-            ghost={ghosts[progress.currentStageIndex] ?? []} />
+          {mode === 'custom' && customText === '' ? (
+            <p className="custom-empty">Paste Hebrew text above to practice.</p>
+          ) : (
+            <TypingSession source={source} target={target} theme={theme} strictness={settings.strictness}
+              stats={stats} guidance={settings.guidanceMode} onComplete={finishSession}
+              ghost={ghosts[progress.currentStageIndex] ?? []} />
+          )}
         </>
       )}
     </div>

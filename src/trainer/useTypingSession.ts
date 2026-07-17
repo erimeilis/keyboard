@@ -89,7 +89,10 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
     const checkWordMistake = (w: number) => {
       const expected = wordTexts[w];
       const typed = wordBuffer.current;
-      if (expected == null || typed === expected) return;
+      if (expected == null) return;
+      // A correctly-completed word clears any callout left over from an earlier
+      // word in the same session — otherwise it lingers on screen indefinitely.
+      if (typed === expected) { setLastMistake(null); return; }
       const result = detectRealWordMistake(expected, typed);
       if (result.isRealWord) setLastMistake({ expected, typed });
     };

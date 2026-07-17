@@ -181,6 +181,21 @@ describe('useTypingSession', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it('clears lastMistake once a subsequent word is typed correctly', () => {
+    const { src, press } = fakeSource();
+    const onComplete = vi.fn();
+    // target "של דג" -> word0 "של" (KeyA, KeyK), Space, word1 "דג" (KeyS, KeyD).
+    const { result } = renderHook(() => useTypingSession({ source: src, target: 'של דג', strictness: 'markThrough', onComplete }));
+    press('KeyG', 100);              // wrong for KeyA, markThrough advances anyway; hypothetically spells "ע"
+    press('KeyK', 200);              // correct for KeyK; word buffer now "על"
+    press('Space', 300);             // word boundary: "של" vs typed "על" -> real word -> lastMistake set
+    expect(result.current.lastMistake).toEqual({ expected: 'של', typed: 'על' });
+    press('KeyS', 400);              // correct, word1 in progress
+    press('KeyD', 500);              // correct, completes word1 == expected "דג" -> callout clears
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(result.current.lastMistake).toBeNull();
+  });
+
   it('does not fire onError on a correct key', () => {
     const { src, press } = fakeSource();
     const onComplete = vi.fn();

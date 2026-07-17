@@ -74,6 +74,25 @@
   background: #febc2e;
 }
 
+.control-btn.trainer {
+  width: auto;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn.trainer:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 1);
+}
+
 /* Collapsed pill */
 .pill {
   width: 40px;

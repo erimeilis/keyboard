@@ -7,11 +7,15 @@
 .char-error   { color: #f87171; text-decoration: underline wavy #f87171; }
 .char-current { color: #e5e7eb; background: rgba(96,165,250,0.35); border-radius: 3px; }
 .trainer-mode { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
-.trainer-topbar { display: flex; justify-content: space-between; align-items: center; }
+.trainer-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .mode-toggle { display: flex; gap: 4px; }
 .mode-toggle button.active { font-weight: 700; text-decoration: underline; }
+.settings-controls { display: flex; gap: 10px; align-items: center; font-size: 12px; color: #9ca3af; }
+.settings-controls label { display: flex; align-items: center; gap: 4px; }
+.settings-controls select { font-size: 12px; }
 .custom-text { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
 .custom-text textarea { min-height: 60px; font-size: 16px; direction: rtl; resize: vertical; }
+.custom-empty { padding: 12px; color: #9ca3af; font-size: 15px; }
 .stats-view { display: flex; gap: 16px; padding: 8px 12px; }
 .stats-view .chart { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 

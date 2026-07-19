@@ -74,6 +74,10 @@
   background: #febc2e;
 }
 
+.control-btn.trainer {
+  background: #0a84ff;
+}
+
 /* Collapsed pill */
 .pill {
   width: 40px;

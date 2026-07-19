@@ -1,0 +1,61 @@
+.mistake-callout { display: flex; align-items: center; justify-content: space-between; gap: 12px; direction: rtl; padding: 8px 12px; margin: 0 12px; background: rgba(250,204,21,0.15); border: 1px solid rgba(250,204,21,0.5); border-radius: 6px; color: #e5e7eb; font-size: 15px; }
+.mistake-callout button { background: none; border: none; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.practice-text { font-size: 28px; line-height: 1.6; direction: rtl; letter-spacing: 2px; padding: 12px; text-align: center; }
+.practice-char { padding: 0 1px; }
+.char-pending { color: #9ca3af; }
+.char-correct { color: #4ade80; }
+.char-error   { color: #f87171; text-decoration: underline wavy #f87171; }
+.char-current { color: #e5e7eb; background: rgba(96,165,250,0.35); border-radius: 3px; }
+/* Caret under the current character (colour follows the char status: red when it's a fault). */
+.char-cursor { border-bottom: 2px solid currentColor; }
+/* Live positive/negative tally shown while typing. */
+.live-stats { display: flex; gap: 18px; font-size: 15px; font-weight: 700; padding: 2px 4px; }
+.live-correct { color: #4ade80; }
+.live-errors { color: #f87171; }
+/* Shown when the active OS input source isn't Hebrew (keystrokes are not counted then). */
+.lang-warning { background: #7c4a03; color: #fde68a; border: 1px solid #b45309; border-radius: 6px; padding: 8px 14px; font-size: 14px; font-weight: 600; text-align: center; }
+/* Placement header + skip-to-lesson-1 escape hatch (so beginners aren't trapped by stop-on-error). */
+.placement-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.placement-skip { background: #0a84ff; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.placement-skip:hover { background: #3b9dff; }
+.trainer-mode { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 16px; min-height: 100vh; box-sizing: border-box; background: #1c1f26; color: #e8eaed; }
+.trainer-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+/* Custom in-window title strip with macOS-style traffic lights (native decorations crash
+   on this transparent/NSPanel window). */
+.trainer-titlebar { display: flex; align-items: center; gap: 14px; margin: -16px -16px 6px; padding: 8px 14px; background: #12141a; border-bottom: 1px solid rgba(255,255,255,0.08); user-select: none; }
+.titlebar-lights { display: flex; gap: 8px; }
+.tl { width: 12px; height: 12px; border-radius: 50%; border: none; padding: 0; cursor: pointer; }
+.tl-close { background: #ff5f57; }
+.tl-min { background: #febc2e; }
+.tl-max { background: #28c840; }
+.tl:hover { filter: brightness(1.15); }
+.trainer-title { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: #c8ccd4; letter-spacing: 0.2px; cursor: default; }
+/* Center the on-screen keyboard and the practice text within the trainer window. */
+.trainer-mode .keyboard { margin: 8px auto; }
+.mode-toggle { display: flex; gap: 4px; }
+.mode-toggle button.active { font-weight: 700; text-decoration: underline; }
+.settings-controls { display: flex; gap: 10px; align-items: center; font-size: 12px; color: #9ca3af; }
+.settings-controls label { display: flex; align-items: center; gap: 4px; }
+.settings-controls select { font-size: 12px; }
+.custom-text { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
+.custom-text textarea { min-height: 60px; font-size: 16px; direction: rtl; resize: vertical; }
+.custom-empty { padding: 12px; color: #9ca3af; font-size: 15px; }
+.stats-view { display: flex; gap: 16px; padding: 8px 12px; }
+.stats-view .chart { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+.ghost-bar { height: 6px; margin: 0 12px; background: rgba(148,163,184,0.25); border-radius: 3px; overflow: hidden; }
+.ghost-marker { height: 100%; background: rgba(226,232,240,0.7); border-radius: 3px; transition: width 80ms linear; }
+
+.celebration { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.celebration.active { animation: celebrate 900ms ease-out; }
+@keyframes celebrate {
+  0% { opacity: 0; transform: scale(0.9); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.1); background: radial-gradient(circle, rgba(74,222,128,0.35), transparent 70%); }
+}
+
+.theme-bg { position: absolute; inset: 0; z-index: -1; opacity: 0.25; transition: background 400ms ease; }
+.theme-default { background: #0f172a; }
+.theme-sea { background: linear-gradient(#0ea5e9, #0369a1); }
+.theme-space { background: radial-gradient(circle at 30% 20%, #312e81, #020617); }
+.theme-wisdom { background: linear-gradient(#7c3aed, #4c1d95); }

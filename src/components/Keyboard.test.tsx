@@ -16,11 +16,10 @@ describe('Keyboard Component', () => {
     expect(container.querySelector('.keyboard')).toBeInTheDocument();
   });
 
-  it('sets up event listeners on mount', async () => {
+  it('sets up the keyboard-state listener on mount', async () => {
     const { listen } = await import('@tauri-apps/api/event');
     render(<Keyboard />);
 
-    expect(listen).toHaveBeenCalledWith('key-pressed', expect.any(Function));
-    expect(listen).toHaveBeenCalledWith('key-released', expect.any(Function));
+    expect(listen).toHaveBeenCalledWith('keyboard-state', expect.any(Function));
   });
 });

@@ -1,7 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { Keyboard } from './components/Keyboard';
 import { useKeyboardLayout } from './hooks/useKeyboardLayout';
+import { TrainerMode } from './trainer/TrainerMode';
 import './App.css';
 
 const CONTROLS_HEIGHT = 24;
@@ -13,6 +15,7 @@ const MAX_SCALE = 1.5;
 function App() {
   const activeLayout = useKeyboardLayout();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
   const [scale, setScale] = useState(1);
   const [preCollapseSize, setPreCollapseSize] = useState<{ width: number; height: number } | null>(null);
   const [preCollapsePos, setPreCollapsePos] = useState<{ x: number; y: number } | null>(null);
@@ -79,6 +82,26 @@ function App() {
     return () => { unlisten?.(); };
   }, [isCollapsed]);
 
+  // Tray menu "Typing Trainer" → toggle trainer mode
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen('toggle-trainer', () => setIsTraining((t) => !t)).then((u) => { unlisten = u; });
+    return () => { unlisten?.(); };
+  }, []);
+
+  // Trainer mode uses a normal-sized common window; exiting restores the keyboard overlay size
+  useEffect(() => {
+    const win = getCurrentWindow();
+    if (isTraining) {
+      win.setSize(new LogicalSize(1000, 640));
+    } else if (!isCollapsed && baseSizeRef.current.width > 0) {
+      const w = Math.round(baseSizeRef.current.width * scaleRef.current);
+      const h = Math.round((baseSizeRef.current.height + CONTROLS_HEIGHT) * scaleRef.current);
+      win.setSize(new LogicalSize(w, h));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTraining]);
+
   // Only the drag bar triggers window dragging
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     if (e.buttons === 1) {
@@ -135,6 +158,10 @@ function App() {
     window.addEventListener('mouseup', handleMouseUp);
   }, []);
 
+  if (isTraining) {
+    return <TrainerMode onExit={() => setIsTraining(false)} />;
+  }
+
   if (isCollapsed) {
     return (
       <div className="app-container collapsed">
@@ -164,6 +191,7 @@ function App() {
         <div className="window-controls" onMouseDown={(e) => e.stopPropagation()}>
           <button className="control-btn close" onClick={handleClose} title="Hide window" />
           <button className="control-btn collapse" onClick={handleCollapse} title="Collapse" />
+          <button className="control-btn trainer" onClick={() => setIsTraining(true)} title="Typing trainer" />
         </div>
       </div>
       {/* Zoomed keyboard — no drag handler here */}

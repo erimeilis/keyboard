@@ -31,4 +31,5 @@ build
 
 # Claude and docs
 .claude
-docs
+docs/*
+!docs/plans/

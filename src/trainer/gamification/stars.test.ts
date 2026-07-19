@@ -1,7 +1,7 @@
 // src/trainer/stars.test.ts
 import { describe, it, expect } from 'vitest';
 import { computeStars } from './stars';
-import type { SessionResult } from './types';
+import type { SessionResult } from '../types';
 const r = (accuracy: number, wpm: number): SessionResult => ({ wpm, accuracy, wholeWordAccuracy: accuracy, durationMs: 60000, typedChars: 100, perKey: {} });
 
 describe('computeStars', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ghostCharsAt } from './ghost';
+import { ghostCharsAt } from '../gamification/ghost';
 
 export const GhostBar: React.FC<{ ghost: number[]; elapsedMs: number; total: number }> = ({ ghost, elapsedMs, total }) => {
   const pct = total ? (ghostCharsAt(ghost, elapsedMs) / total) * 100 : 0;

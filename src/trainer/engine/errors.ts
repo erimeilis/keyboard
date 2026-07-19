@@ -1,7 +1,7 @@
-import type { Letter } from './types';
-import { SOFIT_PAIRS } from './data/hebrewLayout';
+import type { Letter } from '../types';
+import { SOFIT_PAIRS } from '../data/hebrewLayout';
 import { CONFUSABLE_GROUPS } from './curriculum';
-import { COMMON_WORDS_HE } from './data/words.he';
+import { COMMON_WORDS_HE } from '../data/words.he';
 
 const sofitSet = new Set(SOFIT_PAIRS.flatMap(p => [p.sofit + p.regular, p.regular + p.sofit]));
 const COMMON_SET = new Set(COMMON_WORDS_HE);

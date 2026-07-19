@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { selectSentence } from './textSelection';
-import { PROSE_HE } from './data/prose.he';
-import { codeForLetter } from './data/hebrewLayout';
+import { PROSE_HE } from '../data/prose.he';
+import { codeForLetter } from '../data/hebrewLayout';
 
 describe('selectSentence', () => {
   it('returns null when no passage is fully typable', () => {

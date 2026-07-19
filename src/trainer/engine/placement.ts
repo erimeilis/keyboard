@@ -1,5 +1,5 @@
 // src/trainer/placement.ts
-import type { SessionResult } from './types';
+import type { SessionResult } from '../types';
 import { STAGES } from './curriculum';
 
 export function seedFromPlacement(result: SessionResult): { unlockedStageIndex: number; currentStageIndex: number } {

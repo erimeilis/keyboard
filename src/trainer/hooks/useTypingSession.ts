@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { KeySource, KeyEvent, KeyCode, Strictness, SessionLog, PosOutcome } from './types';
-import { codeForLetter, letterForCode } from './data/hebrewLayout';
-import { detectRealWordMistake } from './errors';
+import type { KeySource, KeyEvent, KeyCode, Strictness, SessionLog, PosOutcome } from '../types';
+import { codeForLetter, letterForCode } from '../data/hebrewLayout';
+import { detectRealWordMistake } from '../engine/errors';
 
 interface UseSessionOpts {
   source: KeySource; target: string; strictness: Strictness; onComplete: (log: SessionLog) => void;

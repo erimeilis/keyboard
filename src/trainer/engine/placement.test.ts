@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { seedFromPlacement } from './placement';
-import type { SessionResult } from './types';
+import type { SessionResult } from '../types';
 
 const r = (wpm: number, accuracy: number): SessionResult =>
   ({ wpm, accuracy, wholeWordAccuracy: accuracy, durationMs: 60000, typedChars: 100, perKey: {} });

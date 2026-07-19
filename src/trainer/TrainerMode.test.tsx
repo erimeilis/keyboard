@@ -32,8 +32,8 @@ vi.mock('@tauri-apps/api/window', () => ({
 }));
 
 import { TrainerMode } from './TrainerMode';
-import { createMemoryStore } from './storage';
-import { loadSettings } from './useTrainerState';
+import { createMemoryStore } from './persistence/storage';
+import { loadSettings } from './persistence/useTrainerState';
 
 describe('TrainerMode', () => {
   it('enters trainer mode on mount and exits on unmount', () => {

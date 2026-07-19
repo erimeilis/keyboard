@@ -1,7 +1,7 @@
 import type { TrainerStore } from './storage';
 import { STORAGE_KEYS } from './storage';
-import type { Settings, Progress, KeyStat, SessionResult, KeyCode, StreakState } from './types';
-import { DEFAULT_SETTINGS } from './types';
+import type { Settings, Progress, KeyStat, SessionResult, KeyCode, StreakState } from '../types';
+import { DEFAULT_SETTINGS } from '../types';
 
 const LATENCY_WINDOW = 20;
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { byLetter } from './data/hebrewLayout';
+import { byLetter } from '../data/hebrewLayout';
 
 export function sanitizeHebrew(input: string): string {
   // Keep only letters present in the layout and any whitespace; drop niqqud/punctuation.

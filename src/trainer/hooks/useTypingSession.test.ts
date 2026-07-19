@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTypingSession } from './useTypingSession';
-import type { KeySource, KeyEvent, SessionLog } from './types';
+import type { KeySource, KeyEvent, SessionLog } from '../types';
 
 function fakeSource() {
   let cb: ((e: KeyEvent) => void) | null = null;

@@ -1,6 +1,6 @@
 // src/trainer/StatsView.tsx
 import React from 'react';
-import { linePoints } from './chart';
+import { linePoints } from '../gamification/chart';
 
 export const StatsView: React.FC<{ history: { wpm: number; accuracy: number }[] }> = ({ history }) => {
   const wpm = history.map(h => h.wpm);

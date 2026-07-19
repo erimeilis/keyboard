@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeSessionResult } from './scoring';
-import type { SessionLog } from './types';
+import type { SessionLog } from '../types';
 
 const log: SessionLog = {
   startTs: 0,

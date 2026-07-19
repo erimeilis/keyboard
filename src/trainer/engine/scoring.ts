@@ -1,5 +1,5 @@
-import type { SessionLog, SessionResult, KeyCode } from './types';
-import { median } from './engine/confidence';
+import type { SessionLog, SessionResult, KeyCode } from '../types';
+import { median } from './confidence';
 
 export function computeSessionResult(log: SessionLog): SessionResult {
   const positions = log.words.flat();

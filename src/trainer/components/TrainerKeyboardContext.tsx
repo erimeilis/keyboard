@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import type { KeyboardView, TrainerKeyView, ComponentId } from './types';
+import type { KeyboardView, TrainerKeyView, ComponentId } from '../types';
 
 const Ctx = createContext<KeyboardView | null>(null);
 

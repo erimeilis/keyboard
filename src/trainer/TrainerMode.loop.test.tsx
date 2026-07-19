@@ -31,7 +31,7 @@ vi.mock('@tauri-apps/api/window', () => ({
 }));
 
 import { TrainerMode } from './TrainerMode';
-import { createMemoryStore } from './storage';
+import { createMemoryStore } from './persistence/storage';
 import type { KeySource, KeyEvent } from './types';
 
 function fakeSource() {

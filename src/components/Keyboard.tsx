@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { Key } from './Key';
 import { mapKeyCodeToComponentId } from '../utils/keyMapping';
-import { TrainerKeyboardProvider } from '../trainer/TrainerKeyboardContext';
+import { TrainerKeyboardProvider } from '../trainer/components/TrainerKeyboardContext';
 import type { KeyboardView } from '../trainer/types';
 import './Keyboard.css';
 

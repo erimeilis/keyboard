@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { Key } from '../components/Key';
+import { Key } from '../../components/Key';
 import { TrainerKeyboardProvider } from './TrainerKeyboardContext';
 
 describe('Key trainer visuals', () => {

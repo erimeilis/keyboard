@@ -1,13 +1,13 @@
 // src/trainer/PlacementTest.tsx
 import React from 'react';
-import type { KeySource, SessionLog } from './types';
-import { useTypingSession } from './useTypingSession';
+import type { KeySource, SessionLog } from '../types';
+import { useTypingSession } from '../hooks/useTypingSession';
 import { PracticePanel } from './PracticePanel';
 import { LiveStats } from './LiveStats';
-import { Keyboard } from '../components/Keyboard';
-import { buildKeyboardView } from './keyboardView';
-import { computeSessionResult } from './scoring';
-import { seedFromPlacement } from './placement';
+import { Keyboard } from '../../components/Keyboard';
+import { buildKeyboardView } from '../engine/keyboardView';
+import { computeSessionResult } from '../engine/scoring';
+import { seedFromPlacement } from '../engine/placement';
 
 const PLACEMENT_TEXT = 'שלום עולם זה מבחן קצר של מהירות הקלדה';
 

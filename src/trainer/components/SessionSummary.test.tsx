@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SessionSummary } from './SessionSummary';
-import type { SessionResult, StreakState } from './types';
+import type { SessionResult, StreakState } from '../types';
 
 const result: SessionResult = { wpm: 42.4, accuracy: 0.965, wholeWordAccuracy: 0.9, durationMs: 60000, typedChars: 200, perKey: {} };
 

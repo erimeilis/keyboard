@@ -1,4 +1,4 @@
-import type { SessionLog } from './types';
+import type { SessionLog } from '../types';
 
 export function ghostCharsAt(ghost: number[], elapsedMs: number): number {
   let n = 0;

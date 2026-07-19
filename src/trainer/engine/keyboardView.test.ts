@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildKeyboardView } from './keyboardView';
-import type { KeyStat } from './types';
+import type { KeyStat } from '../types';
 
 const strong = (code: string): KeyStat => ({ code, attempts: 50, errors: 0, latencies: [180] });
 

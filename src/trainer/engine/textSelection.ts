@@ -1,5 +1,5 @@
-import type { KeyCode } from './types';
-import { codeForLetter, byCode } from './data/hebrewLayout';
+import type { KeyCode } from '../types';
+import { codeForLetter, byCode } from '../data/hebrewLayout';
 
 const MIN_LETTER_KEYS_FOR_WORDS = 3;
 

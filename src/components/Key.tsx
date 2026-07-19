@@ -1,6 +1,6 @@
 import React from 'react';
 import './Keyboard.css';
-import { useTrainerKeyView } from '../trainer/TrainerKeyboardContext';
+import { useTrainerKeyView } from '../trainer/components/TrainerKeyboardContext';
 
 interface BaseKeyProps {
   width?: number | 'fill';

@@ -1,5 +1,5 @@
 // src/trainer/streak.ts
-import type { StreakState } from './types';
+import type { StreakState } from '../types';
 
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);

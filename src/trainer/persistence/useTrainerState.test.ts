@@ -4,7 +4,7 @@ import {
   loadSettings, saveSettings, mergeSessionStats, loadStats, saveStats, loadHistory, saveHistory,
   loadStreak, saveStreak, loadGhosts, saveGhosts,
 } from './useTrainerState';
-import type { SessionResult, KeyStat } from './types';
+import type { SessionResult, KeyStat } from '../types';
 
 describe('trainer state', () => {
   it('persists settings with defaults', () => {

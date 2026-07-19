@@ -1,7 +1,7 @@
-import type { KeyCode, KeyStat, GuidanceMode, KeyboardView } from './types';
-import { HE_LAYOUT } from './data/hebrewLayout';
-import { confidenceFor } from './engine/confidence';
-import { GATE } from './engine/gating';
+import type { KeyCode, KeyStat, GuidanceMode, KeyboardView } from '../types';
+import { HE_LAYOUT } from '../data/hebrewLayout';
+import { confidenceFor } from './confidence';
+import { GATE } from './gating';
 
 interface ViewOpts {
   nextCode: KeyCode | null; statsByCode: Record<KeyCode, KeyStat>; guidance: GuidanceMode;

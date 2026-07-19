@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ghostCharsAt, buildGhost, isFasterGhost } from './ghost';
-import type { SessionLog } from './types';
+import type { SessionLog } from '../types';
 
 describe('ghostCharsAt', () => {
   const ghost = [100, 250, 500]; // char 1 at 100ms, char 2 at 250ms, char 3 at 500ms

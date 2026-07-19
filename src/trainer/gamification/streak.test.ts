@@ -1,7 +1,7 @@
 // src/trainer/streak.test.ts
 import { describe, it, expect } from 'vitest';
 import { updateStreak } from './streak';
-import type { StreakState } from './types';
+import type { StreakState } from '../types';
 const base: StreakState = { lastPracticedISO: null, current: 0, longest: 0, todayMinutes: 0 };
 
 describe('updateStreak', () => {

@@ -1,6 +1,6 @@
 // src/trainer/SessionSummary.tsx
 import React from 'react';
-import type { SessionResult, StreakState } from './types';
+import type { SessionResult, StreakState } from '../types';
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const starGlyphs = (stars: 0 | 1 | 2 | 3) => '★'.repeat(stars) + '☆'.repeat(3 - stars);

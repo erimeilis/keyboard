@@ -1,6 +1,6 @@
 import type { KeyCode, KeyStat } from '../types';
 import { accuracyFor, confidenceFor } from './confidence';
-import { unlockedCodesForStage } from '../curriculum';
+import { unlockedCodesForStage } from './curriculum';
 
 export const GATE = { minAccuracy: 0.98, minConfidence: 0.8 };
 

@@ -1,4 +1,4 @@
-import type { KeyCode, Letter } from './types';
+import type { KeyCode, Letter } from '../types';
 
 export interface Stage { index: number; name: string; newCodes: KeyCode[] }
 

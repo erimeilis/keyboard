@@ -5,7 +5,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 // vi.fn()` referenced inside the factory throws "Cannot access before initialization"
 // on this vitest version. vi.hoisted() defines the mock in the same hoisted scope,
 // letting the factory (and later assertions) reference the same fn instance.
-const { invoke } = vi.hoisted(() => ({ invoke: vi.fn(async () => {}) }));
+const { invoke } = vi.hoisted(() => ({
+  // Return a valid layout id for the layout poll so useKeyboardLayout doesn't log an error.
+  invoke: vi.fn(async (cmd: string) =>
+    cmd === 'get_active_keyboard_layout' ? 'com.apple.keylayout.Hebrew' : undefined,
+  ),
+}));
 vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 
 // Keyboard (rendered inside TrainerMode) sets up a `keyboard-state` listener via
@@ -13,6 +18,17 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 // rejection dangling (see Keyboard.test.tsx for the same pattern).
 vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn((_event, _callback) => Promise.resolve(() => {})),
+}));
+
+// TrainerMode's focus gate + TrainerTitlebar call getCurrentWindow(); stub it so mounting
+// works under jsdom (no Tauri IPC).
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({
+    onFocusChanged: vi.fn(() => Promise.resolve(() => {})),
+    minimize: vi.fn(),
+    toggleMaximize: vi.fn(),
+    setSize: vi.fn(),
+  }),
 }));
 
 import { TrainerMode } from './TrainerMode';
@@ -56,8 +72,8 @@ describe('TrainerMode', () => {
     expect(loadSettings(store).guidanceMode).toBe('hidden');
 
     const captureSelect = screen.getByLabelText(/capture/i) as HTMLSelectElement;
-    expect(captureSelect.value).toBe('dom');
-    fireEvent.change(captureSelect, { target: { value: 'tap' } });
-    expect(loadSettings(store).captureSource).toBe('tap');
+    expect(captureSelect.value).toBe('tap'); // default: global tap (focus-independent)
+    fireEvent.change(captureSelect, { target: { value: 'dom' } });
+    expect(loadSettings(store).captureSource).toBe('dom');
   });
 });

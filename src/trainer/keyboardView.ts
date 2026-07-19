@@ -12,7 +12,11 @@ export function buildKeyboardView({ nextCode, statsByCode, guidance, faultCode =
   const view: KeyboardView = {};
   for (const key of HE_LAYOUT) {
     const stat = statsByCode[key.code];
-    const conf = stat ? confidenceFor(stat) : 0;
+    // Only tint keys that have actually been practiced. A never-typed key has no
+    // meaningful "confidence" — painting it red (heat 0) just reads as "you're bad
+    // at everything" on a fresh keyboard, so leave it untinted (heat undefined).
+    const hasData = !!stat && stat.attempts > 0;
+    const conf = hasData ? confidenceFor(stat) : 0;
     const isNext = key.code === nextCode;
     let hidden = false, dim = false;
     if (!isNext) {
@@ -20,7 +24,7 @@ export function buildKeyboardView({ nextCode, statsByCode, guidance, faultCode =
       else if (guidance === 'dim') dim = true;
       else if (guidance === 'auto') hidden = conf >= GATE.minConfidence;
     }
-    view[key.componentId] = { heat: conf, finger: key.finger, isNextTarget: isNext, hidden, dim, fault: key.code === faultCode };
+    view[key.componentId] = { heat: hasData ? conf : undefined, finger: key.finger, isNextTarget: isNext, hidden, dim, fault: key.code === faultCode };
   }
   return view;
 }

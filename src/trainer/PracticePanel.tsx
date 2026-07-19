@@ -27,9 +27,12 @@ export const PracticePanel: React.FC<Props> = ({ target, statuses, index, lastMi
       )}
       <div className="practice-text" dir="rtl">
         {chars.map((ch, i) => {
-          const status = i === index ? 'current' : statuses[i] ?? 'pending';
+          const isCursor = i === index;
+          // Error takes precedence over the neutral "current" highlight, so a wrong key
+          // turns the current character red instead of hiding the fault.
+          const status = statuses[i] === 'error' ? 'error' : isCursor ? 'current' : (statuses[i] ?? 'pending');
           return (
-            <span key={i} className={`practice-char char-${status}`}>
+            <span key={i} className={`practice-char char-${status}${isCursor ? ' char-cursor' : ''}`}>
               {ch === ' ' ? ' ' : ch}
             </span>
           );

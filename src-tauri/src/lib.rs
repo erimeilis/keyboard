@@ -8,7 +8,7 @@ mod simulate_flag;
 mod layout_detector_macos;
 
 use log::{error, info, warn};
-use tauri::{Manager, RunEvent};
+use tauri::{Emitter, Manager, RunEvent};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 
@@ -88,6 +88,15 @@ fn apply_trainer_mode(app: &tauri::AppHandle, active: bool) {
                 if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
                     error!("set_trainer_mode(true): failed to set Regular activation policy: {e}");
                 }
+                // Become a normal ("common") application window rather than the floating overlay:
+                // drop always-on-top (Dock is handled by the Regular activation policy above).
+                // NOTE: we deliberately do NOT toggle window decorations at runtime — set_decorations
+                // changes the NSWindow styleMask, which throws an uncaught NSException on this
+                // transparent / NSPanel-swizzled window and aborts the process. The trainer draws
+                // its own in-window title strip instead (see trainer.css .trainer-titlebar).
+                if let Err(e) = window.set_always_on_top(false) {
+                    warn!("set_trainer_mode(true): failed to clear always-on-top: {e}");
+                }
                 if let Err(e) = window.set_focus() {
                     error!("set_trainer_mode(true): failed to focus 'main' window: {e}");
                 }
@@ -97,7 +106,20 @@ fn apply_trainer_mode(app: &tauri::AppHandle, active: bool) {
             }
         }
     } else {
-        // Revert to the non-activating overlay panel. Convert only when `main` is currently a
+        // Restore the overlay chrome FIRST, while `main` is still a plain window. Toggling
+        // decorations / window level on the NSPanel form throws an uncaught NSException that
+        // aborts the process (this crashed on trainer exit), so it MUST happen before to_panel().
+        // Guarded on "is currently a plain window" so a double-deactivate never touches the panel.
+        if app.get_webview_panel("main").is_err() {
+            if let Some(window) = app.get_webview_window("main") {
+                // Only restore the window level here — do NOT toggle decorations (styleMask),
+                // which throws an NSException on this transparent/NSPanel window (crashed on exit).
+                if let Err(e) = window.set_always_on_top(true) {
+                    warn!("set_trainer_mode(false): failed to restore always-on-top: {e}");
+                }
+            }
+        }
+        // Now revert to the non-activating overlay panel. Convert only when `main` is currently a
         // plain window (see the idempotency note above): re-converting an existing panel would
         // corrupt the recorded original class and break the next activate.
         match app.get_webview_panel("main") {
@@ -217,9 +239,11 @@ pub fn run() {
 
       // Set up menu bar tray icon (no dock icon due to Accessory policy)
       let show_hide = MenuItemBuilder::with_id("show_hide", "Show/Hide Keyboard").build(app)?;
+      let trainer = MenuItemBuilder::with_id("trainer", "Typing Trainer").build(app)?;
       let quit = MenuItemBuilder::with_id("quit", "Quit Hebrew Keyboard").build(app)?;
       let tray_menu = MenuBuilder::new(app)
           .item(&show_hide)
+          .item(&trainer)
           .separator()
           .item(&quit)
           .build()?;
@@ -242,6 +266,16 @@ pub fn run() {
                           } else {
                               let _ = window.show();
                           }
+                      }
+                  }
+                  "trainer" => {
+                      // Ensure the window is visible, then let the frontend toggle trainer mode
+                      // (which invokes set_trainer_mode to transform the window).
+                      if let Some(window) = app_handle.get_webview_window("main") {
+                          let _ = window.show();
+                      }
+                      if let Err(e) = app_handle.emit("toggle-trainer", ()) {
+                          error!("Failed to emit toggle-trainer event: {:?}", e);
                       }
                   }
                   "quit" => {

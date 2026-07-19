@@ -3,6 +3,9 @@ import React from 'react';
 import type { KeySource, SessionLog } from './types';
 import { useTypingSession } from './useTypingSession';
 import { PracticePanel } from './PracticePanel';
+import { LiveStats } from './LiveStats';
+import { Keyboard } from '../components/Keyboard';
+import { buildKeyboardView } from './keyboardView';
 import { computeSessionResult } from './scoring';
 import { seedFromPlacement } from './placement';
 
@@ -13,11 +16,26 @@ export const PlacementTest: React.FC<{
   onDone: (seed: { unlockedStageIndex: number; currentStageIndex: number }) => void;
 }> = ({ source, onDone }) => {
   const handleComplete = (log: SessionLog) => onDone(seedFromPlacement(computeSessionResult(log)));
-  const s = useTypingSession({ source, target: PLACEMENT_TEXT, strictness: 'markThrough', onComplete: handleComplete });
+  // Stop-on-error (like the app default): only the correct key advances, so you can't race
+  // through by mashing keys. Placement still measures speed/accuracy on the corrected run.
+  const s = useTypingSession({ source, target: PLACEMENT_TEXT, strictness: 'stop', onComplete: handleComplete });
+  // Full guidance during placement: no stats yet, so highlight the next key + finger.
+  const view = buildKeyboardView({ nextCode: s.nextCode, statsByCode: {}, guidance: 'full' });
+  const correct = s.statuses.filter((st) => st === 'correct').length;
   return (
     <div className="placement">
-      <h3>Placement — type this once</h3>
+      <div className="placement-head">
+        <h3>Placement — type this once to gauge your level</h3>
+        <button
+          className="placement-skip"
+          onClick={() => onDone({ unlockedStageIndex: 0, currentStageIndex: 0 })}
+        >
+          Skip → start from lesson 1
+        </button>
+      </div>
+      <LiveStats correct={correct} errors={s.errorCount} />
       <PracticePanel target={PLACEMENT_TEXT} statuses={s.statuses} index={s.index} />
+      <Keyboard trainerView={view} />
     </div>
   );
 };

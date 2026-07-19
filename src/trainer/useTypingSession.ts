@@ -17,6 +17,7 @@ interface SessionState {
   statuses: ('pending'|'correct'|'error')[];
   nextCode: KeyCode | null;
   lastMistake: Mistake | null;
+  errorCount: number; // total wrong keystrokes this session (the "reds")
 }
 
 function buildExpected(target: string): { codes: KeyCode[]; wordOf: number[]; wordTexts: string[]; wordPos: number[] } {
@@ -49,6 +50,7 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
   const [index, setIndex] = useState(0);
   const [statuses, setStatuses] = useState<('pending'|'correct'|'error')[]>(() => codes.map(() => 'pending'));
   const [lastMistake, setLastMistake] = useState<Mistake | null>(null);
+  const [errorCount, setErrorCount] = useState(0);
 
   // Refs so the event handler always sees current values without re-subscribing.
   const idx = useRef(0);
@@ -56,6 +58,7 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
   const lastTs = useRef<number | null>(null);
   const startTs = useRef<number | null>(null);
   const outcomes = useRef<PosOutcome[]>([]);
+  const errorCountRef = useRef(0);
   // Best-effort: the letters actually "consumed" so far for the word in
   // progress (every keypress in markThrough mode; only the eventually-correct
   // keypress in stop mode, since stop mode never lets a wrong letter stick).
@@ -79,9 +82,11 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
     startTs.current = null;
     outcomes.current = [];
     wordBuffer.current = '';
+    errorCountRef.current = 0;
     setIndex(0);
     setStatuses(codes.map(() => 'pending'));
     setLastMistake(null);
+    setErrorCount(0);
 
     // Best-effort meaning check: compares the word just completed against
     // what was actually typed. If they differ and the typed word is itself a
@@ -130,6 +135,8 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
         }
       } else {
         onErrorRef.current?.(codes[i]); // fires for every wrong keystroke, in both strictness modes
+        errorCountRef.current += 1;
+        setErrorCount(errorCountRef.current);
         const isFirstErrorAtPos = !hadErrorHere.current;
         hadErrorHere.current = true;
         setStatuses(s => { const n = [...s]; n[i] = 'error'; return n; });
@@ -167,5 +174,5 @@ export function useTypingSession(opts: UseSessionOpts): SessionState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
-  return { index, expectedCodes: codes, statuses, nextCode: codes[index] ?? null, lastMistake };
+  return { index, expectedCodes: codes, statuses, nextCode: codes[index] ?? null, lastMistake, errorCount };
 }

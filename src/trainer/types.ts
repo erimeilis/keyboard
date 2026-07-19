@@ -72,6 +72,9 @@ export type KeyboardView = Record<ComponentId, TrainerKeyView>;
 export const DEFAULT_SETTINGS: Settings = {
   guidanceMode: 'full',
   strictness: 'stop',
-  captureSource: 'dom',
+  // Default to the global CGEventTap ('tap'): it captures keystrokes regardless of window
+  // focus. DOM capture needs the (borderless) webview to hold keyboard first-responder, which
+  // is unreliable — keystrokes wouldn't register. Users can switch to 'dom' in settings.
+  captureSource: 'tap',
   dailyGoalMinutes: 10,
 };

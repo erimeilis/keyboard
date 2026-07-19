@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Keyboard } from '../components/Keyboard';
+import { TrainerTitlebar } from './TrainerTitlebar';
+import { useKeyboardLayout } from '../hooks/useKeyboardLayout';
 import { PracticePanel } from './PracticePanel';
+import { LiveStats } from './LiveStats';
 import { SessionSummary } from './SessionSummary';
 import { StatsView } from './StatsView';
 import { PlacementTest } from './PlacementTest';
@@ -76,6 +80,29 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     [makeSource, settings.captureSource],
   );
 
+  // Count a keystroke only when (a) the trainer window is focused and (b) the Hebrew input
+  // source is active. Focus: the global tap captures system-wide, so without it we'd count
+  // typing done in OTHER apps. Language: physical-key matching alone would count English-active
+  // typing as "correct Hebrew", which is wrong for a Hebrew trainer.
+  const layout = useKeyboardLayout(); // 'he' | 'en'
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const focusedRef = useRef(true);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWindow()
+      .onFocusChanged(({ payload: focused }) => { focusedRef.current = focused; })
+      .then((u) => { unlisten = u; });
+    return () => { unlisten?.(); };
+  }, []);
+  const gatedSource = useMemo<KeySource>(
+    () => ({
+      start: (onKey) => source.start((e) => { if (focusedRef.current && layoutRef.current === 'he') onKey(e); }),
+      stop: () => source.stop(),
+    }),
+    [source],
+  );
+
   useEffect(() => {
     invoke('set_trainer_mode', { active: true }).catch(console.error);
     return () => { invoke('set_trainer_mode', { active: false }).catch(console.error); };
@@ -137,8 +164,11 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   if (phase === 'placement') {
     return (
       <div className="trainer-mode">
-        <div className="trainer-topbar"><button onClick={onExit}>Exit trainer</button></div>
-        <PlacementTest source={source} onDone={(seed) => {
+        <TrainerTitlebar onExit={onExit} />
+        {layout !== 'he' && (
+          <div className="lang-warning">⌨ Switch your keyboard to Hebrew — keystrokes only count while Hebrew input is active.</div>
+        )}
+        <PlacementTest source={gatedSource} onDone={(seed) => {
           const next = { ...progress, ...seed }; setProgress(next); saveProgress(store, next); setPhase('typing');
         }} />
       </div>
@@ -148,8 +178,11 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   return (
     <div className="trainer-mode">
       <Celebration trigger={celebrateTrigger} />
+      <TrainerTitlebar onExit={onExit} />
+      {layout !== 'he' && (
+        <div className="lang-warning">⌨ Switch your keyboard to Hebrew — keystrokes only count while Hebrew input is active.</div>
+      )}
       <div className="trainer-topbar">
-        <button onClick={onExit}>Exit trainer</button>
         <div className="mode-toggle" role="group" aria-label="Practice mode">
           {(['drills', 'words', 'prose', 'custom'] as const).map(m => (
             <button
@@ -215,7 +248,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
           {mode === 'custom' && customText === '' ? (
             <p className="custom-empty">Paste Hebrew text above to practice.</p>
           ) : (
-            <TypingSession source={source} target={target} theme={theme} strictness={settings.strictness}
+            <TypingSession source={gatedSource} target={target} theme={theme} strictness={settings.strictness}
               stats={stats} guidance={settings.guidanceMode} onComplete={finishSession}
               ghost={ghosts[progress.currentStageIndex] ?? []} />
           )}
@@ -260,9 +293,11 @@ const TypingSession: React.FC<{
     return () => cancelAnimationFrame(frame);
   }, [target]);
 
+  const correct = s.statuses.filter((st) => st === 'correct').length;
   return (
     <>
       <GhostBar ghost={ghost} elapsedMs={elapsedMs} total={s.expectedCodes.length} />
+      <LiveStats correct={correct} errors={s.errorCount} />
       <ThemeBackground theme={theme} />
       <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} />
       <Keyboard trainerView={view} />

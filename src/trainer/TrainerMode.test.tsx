@@ -1,0 +1,75 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+
+// vi.mock factories are hoisted above top-level statements, so a plain `const invoke =
+// vi.fn()` referenced inside the factory throws "Cannot access before initialization"
+// on this vitest version. vi.hoisted() defines the mock in the same hoisted scope,
+// letting the factory (and later assertions) reference the same fn instance.
+const { invoke } = vi.hoisted(() => ({
+  // Return a valid layout id for the layout poll so useKeyboardLayout doesn't log an error.
+  invoke: vi.fn(async (cmd: string) =>
+    cmd === 'get_active_keyboard_layout' ? 'com.apple.keylayout.Hebrew' : undefined,
+  ),
+}));
+vi.mock('@tauri-apps/api/core', () => ({ invoke }));
+
+// Keyboard (rendered inside TrainerMode) sets up a `keyboard-state` listener via
+// @tauri-apps/api/event — mock it so mounting TrainerMode doesn't leave an unhandled
+// rejection dangling (see Keyboard.test.tsx for the same pattern).
+// Captures the registered handlers so a native titlebar click can be simulated: the
+// window buttons are real AppKit views now, so they emit an event rather than being
+// DOM nodes a test can click.
+const { listeners } = vi.hoisted(() => ({
+  listeners: new Map<string, (e: { payload: unknown }) => void>(),
+}));
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn((event: string, callback: (e: { payload: unknown }) => void) => {
+    listeners.set(event, callback);
+    return Promise.resolve(() => listeners.delete(event));
+  }),
+}));
+
+// TrainerMode's focus gate + TrainerTitlebar call getCurrentWindow(); stub it so mounting
+// works under jsdom (no Tauri IPC).
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({
+    onFocusChanged: vi.fn(() => Promise.resolve(() => {})),
+    minimize: vi.fn(),
+    toggleMaximize: vi.fn(),
+    setSize: vi.fn(),
+  }),
+}));
+
+import { TrainerMode } from './TrainerMode';
+import { createMemoryStore } from './persistence/storage';
+import { loadSettings } from './persistence/useTrainerState';
+
+describe('TrainerMode', () => {
+  beforeEach(() => listeners.clear());
+
+  it('updates and persists settings when the topbar controls change', () => {
+    const store = createMemoryStore();
+    // Pre-seed stats so the component skips the placement phase (which has no
+    // settings controls) and lands directly on the typing topbar.
+    store.set('trainer.stats', { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } });
+    render(<TrainerMode store={store} />);
+
+    const guidanceSelect = screen.getByLabelText(/guidance/i) as HTMLSelectElement;
+    expect(guidanceSelect.value).toBe('full');
+    fireEvent.change(guidanceSelect, { target: { value: 'hidden' } });
+    expect(guidanceSelect.value).toBe('hidden');
+    expect(loadSettings(store).guidanceMode).toBe('hidden');
+
+    const errorsSelect = screen.getByLabelText(/errors/i) as HTMLSelectElement;
+    expect(errorsSelect.value).toBe('stop');
+    fireEvent.change(errorsSelect, { target: { value: 'markThrough' } });
+    expect(loadSettings(store).strictness).toBe('markThrough');
+    // Previously-set guidance change must survive an unrelated later update (merge, not replace).
+    expect(loadSettings(store).guidanceMode).toBe('hidden');
+
+    const captureSelect = screen.getByLabelText(/capture/i) as HTMLSelectElement;
+    expect(captureSelect.value).toBe('tap'); // default: global tap (focus-independent)
+    fireEvent.change(captureSelect, { target: { value: 'dom' } });
+    expect(loadSettings(store).captureSource).toBe('dom');
+  });
+});

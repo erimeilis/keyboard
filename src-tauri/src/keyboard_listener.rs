@@ -150,6 +150,14 @@ mod cg_tap {
     }
 }
 
+/// Payload for the unthrottled `"key-event"` emitted on every physical key press/release.
+/// Named fields (not a tuple) so the frontend can read `event.payload.code` / `.down`.
+#[derive(Clone, serde::Serialize)]
+struct KeyEventPayload {
+    code: String,
+    down: bool,
+}
+
 pub fn start_listener(app_handle: AppHandle) {
     info!("Starting keyboard listener thread");
 
@@ -183,6 +191,12 @@ pub fn start_listener(app_handle: AppHandle) {
 
         while let Ok((keycode, is_press)) = rx.recv() {
             let code = keycode_to_string(keycode);
+
+            // Unthrottled per-key event for the trainer's Tauri-tap capture source.
+            // Independent of the 16ms `keyboard-state` throttle below.
+            if let Err(e) = app_clone.emit("key-event", KeyEventPayload { code: code.clone(), down: is_press }) {
+                error!("Failed to emit key-event: {:?}", e);
+            }
 
             {
                 let mut keys = pressed_keys.lock().unwrap();

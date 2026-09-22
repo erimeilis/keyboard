@@ -31,4 +31,8 @@ build
 
 # Claude and docs
 .claude
-docs
+docs/*
+!docs/plans/
+
+# Intermediate ingest cache; the bundled corpus is siddur.corpus.json
+src/trainer/data/siddur.raw.json

@@ -1,10 +1,33 @@
+:root {
+  /* The app is dark-only. This is what makes macOS render native widget chrome —
+     notably the <select> popup menu, which AppKit draws outside the page — in dark. */
+  color-scheme: dark;
+
+  /* Fallback for engines without CSS system colours. */
+  --accent: #0a84ff;
+  --accent-text: #ffffff;
+}
+
+/* Follow the accent colour the user picked in System Settings, the same one AppKit
+   already uses for the native controls, instead of hardcoding Apple's default blue. */
+@supports (color: AccentColor) {
+  :root {
+    --accent: AccentColor;
+    --accent-text: AccentColorText;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* The window is transparent, so anything these paint shows at the rounded corners as
+   pale fringing outside the clip. Both must be explicitly see-through. */
+html,
 body {
+  background: transparent;
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -15,4 +38,16 @@ body {
 #root {
   width: 100vw;
   height: 100vh;
+}
+
+/* The rounding belongs on the window-sized surface, not on the trainer panel inside
+   it. .trainer-mode grows with its content past 100vh, so its own rounded bottom sat
+   below the window edge and the bottom corners looked square while the top two were
+   fine. #root is exactly the window, so it cannot overflow.
+
+   Scoped to the trainer: the overlay is a bare floating keyboard with its own
+   corners, and clipping it here would shave them. */
+#root:has(.trainer-mode) {
+  border-radius: 16px;
+  overflow: hidden;
 }

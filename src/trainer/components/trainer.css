@@ -1,0 +1,265 @@
+.mistake-callout { display: flex; align-items: center; justify-content: space-between; gap: 12px; direction: rtl; padding: 8px 12px; margin: 0 12px; background: rgba(250,204,21,0.15); border: 1px solid rgba(250,204,21,0.5); border-radius: 6px; color: #e5e7eb; font-size: 15px; }
+.mistake-callout button { background: none; border: none; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.practice-text { font-size: 28px; line-height: 1.6; direction: rtl; letter-spacing: 2px; padding: 12px; text-align: center; }
+.practice-char { padding: 0 1px; }
+.char-pending { color: #9ca3af; }
+.char-correct { color: #4ade80; }
+.char-error   { color: #f87171; text-decoration: underline wavy #f87171; }
+.char-current { color: #e5e7eb; background: rgba(96,165,250,0.35); border-radius: 3px; }
+/* Caret under the current character (colour follows the char status: red when it's a fault). */
+.char-cursor { border-bottom: 2px solid currentColor; }
+/* Live positive/negative tally shown while typing. */
+.live-stats { display: flex; gap: 18px; font-size: 15px; font-weight: 700; padding: 2px 4px; }
+.live-correct { color: #4ade80; }
+.live-errors { color: #f87171; }
+/* Shown when the active OS input source isn't Hebrew (keystrokes are not counted then). */
+.lang-warning { background: #7c4a03; color: #fde68a; border: 1px solid #b45309; border-radius: 6px; padding: 8px 14px; font-size: 14px; font-weight: 600; text-align: center; }
+/* Placement header + skip-to-lesson-1 escape hatch (so beginners aren't trapped by stop-on-error). */
+.placement-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.placement-skip { background: var(--accent); color: var(--accent-text); border: none; border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.placement-skip:hover { filter: brightness(1.15); }
+.placement-skip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Translucent enough for the NSGlassEffectView behind the webview to register, but no
+   further: at 0.72 the desktop read straight through and the practice text became hard
+   to follow, which is the opposite of what a typing trainer needs. */
+/* Corners are rounded on #root (see index.css), which is exactly window-sized; this
+   panel grows past 100vh with its content, so rounding it here left the bottom two
+   corners off-screen and looking square. */
+.trainer-mode { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 16px; min-height: 100vh; box-sizing: border-box; background: rgba(22, 25, 31, 0.9); color: #e8eaed; }
+.trainer-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+/* Native decorations throw an NSException on this transparent/NSPanel window, so the
+   strip is drawn here. Its metrics are measured from a real titled NSWindow on this
+   machine (macOS 27.0, build 26A428) rather than eyeballed:
+
+     titlebar height        32px
+     traffic lights         14x14, 9px inset, 9px gaps, 9px above and below
+     title font             system UI Headline, 13pt
+
+   Previously 12px lights on 8px gaps in a ~29px strip, which is what read as off. */
+.trainer-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  margin: -16px -16px 6px;
+  padding: 0 9px;
+  background: rgba(14, 16, 21, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  user-select: none;
+}
+/* The three lights are real AppKit buttons drawn over the webview by
+   titlebar_macos.rs, so nothing is painted here — only their footprint is reserved:
+   3 x 14px plus two 9px gaps, matching the measured metrics above. Their colour,
+   glass, hover glyphs and inactive dimming all come from AppKit, which is exactly
+   what CSS could not reproduce. */
+.titlebar-lights-space { width: 60px; height: 14px; flex: none; }
+
+/* Centred in the window, as AppKit centres a document title — not trailing the lights. */
+.trainer-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8eaed;
+  letter-spacing: 0.2px;
+  cursor: default;
+  transition: color 140ms ease;
+}
+/* Center the on-screen keyboard and the practice text within the trainer window. */
+.trainer-mode .keyboard { margin: 8px auto; }
+/* Segmented control. The track is a recessed pill and the active segment is a raised
+   accent pill inside it, so the selected mode reads at a glance instead of relying on
+   an underline. */
+.mode-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+.mode-toggle button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.mode-toggle button:hover:not(.active) { background: rgba(255, 255, 255, 0.07); color: #e8eaed; }
+.mode-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.mode-toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.settings-controls { display: flex; gap: 12px; align-items: center; font-size: 12px; color: #9ca3af; }
+.settings-controls label { display: flex; align-items: center; gap: 5px; }
+
+/* Native select chrome is light even in a dark page, so the control is redrawn: the
+   built-in appearance is removed and the disclosure chevron supplied as a background
+   image. `color-scheme: dark` in index.css handles the popup AppKit draws on top. */
+/* Built to match .mode-toggle: same pill radius, same track fill and border, same type.
+   The 8px vertical padding makes the total height equal the toggle's (its 1px border +
+   3px track padding + 5px button padding), so the two controls sit on one line. */
+.settings-controls select {
+  appearance: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8eaed;
+  background-color: rgba(255, 255, 255, 0.05);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 9px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 8px 28px 8px 14px;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.settings-controls select:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.settings-controls select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: transparent;
+}
+/* Belt and braces for the popup rows on platforms that colour them from the element. */
+.settings-controls option { background: #1c1f26; color: #e8eaed; }
+.custom-text { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
+.custom-text textarea { min-height: 60px; font-size: 16px; direction: rtl; resize: vertical; }
+.custom-empty { padding: 12px; color: #9ca3af; font-size: 15px; }
+/* Session summary. Previously unstyled entirely, so the spans ran inline and the value
+   collided with its label ("22WPM", "95%Accuracy"). Each figure is now a tile with the
+   number above its caption. */
+.session-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+}
+.session-summary .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 96px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.session-summary .stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.session-summary .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+.session-summary button {
+  appearance: none;
+  margin-inline-start: auto;
+  padding: 10px 22px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.session-summary button:hover { filter: brightness(1.12); }
+.session-summary button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stats-view { display: flex; gap: 16px; padding: 8px 12px; }
+.stats-view .chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+}
+.stats-view .chart > span {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.ghost-bar { height: 6px; margin: 0 12px; background: rgba(148,163,184,0.25); border-radius: 3px; overflow: hidden; }
+.ghost-marker { height: 100%; background: rgba(226,232,240,0.7); border-radius: 3px; transition: width 80ms linear; }
+
+.celebration { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.celebration.active { animation: celebrate 900ms ease-out; }
+@keyframes celebrate {
+  0% { opacity: 0; transform: scale(0.9); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.1); background: radial-gradient(circle, rgba(74,222,128,0.35), transparent 70%); }
+}
+
+.theme-bg { position: absolute; inset: 0; z-index: -1; opacity: 0.25; transition: background 400ms ease; }
+.theme-default { background: #0f172a; }
+.theme-sea { background: linear-gradient(#0ea5e9, #0369a1); }
+.theme-space { background: radial-gradient(circle at 30% 20%, #312e81, #020617); }
+.theme-wisdom { background: linear-gradient(#7c3aed, #4c1d95); }
+
+/* Translation under the practice line. The line gloss is quoted from the source;
+   the term gloss is derived (see glosses.he.ts) and is styled as secondary so the
+   two are not read as equally authoritative. */
+.practice-gloss {
+  direction: ltr;
+  text-align: center;
+  margin: 0.6rem auto 0;
+  max-width: 46rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  opacity: 0.8;
+}
+
+.practice-term {
+  direction: ltr;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  opacity: 0.65;
+}
+
+.practice-term-he { font-size: 1.05rem; }
+
+.practice-term-en::before { content: '— '; }
+
+.siddur-credit {
+  direction: ltr;
+  text-align: center;
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  opacity: 0.45;
+}

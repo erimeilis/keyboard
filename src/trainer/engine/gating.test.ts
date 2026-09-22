@@ -6,16 +6,18 @@ const good = (code: string): KeyStat => ({ code, attempts: 50, errors: 0, latenc
 const weak = (code: string): KeyStat => ({ code, attempts: 50, errors: 10, latencies: [600] });
 
 describe('gating', () => {
+  const homeRow = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK'];
+  const allGood = () => Object.fromEntries([...homeRow, 'Space'].map(c => [c, good(c)]));
+
   it('advances when all stage-0 keys are mastered', () => {
-    const stats = { KeyF: good('KeyF'), KeyJ: good('KeyJ'), Space: good('Space') };
-    expect(canAdvance(0, stats)).toBe(true);
+    expect(canAdvance(0, allGood())).toBe(true);
   });
   it('blocks when any stage key is weak', () => {
-    const stats = { KeyF: good('KeyF'), KeyJ: weak('KeyJ'), Space: good('Space') };
-    expect(canAdvance(0, stats)).toBe(false);
+    expect(canAdvance(0, { ...allGood(), KeyJ: weak('KeyJ') })).toBe(false);
   });
   it('blocks when a stage key has no data', () => {
-    expect(canAdvance(0, { KeyF: good('KeyF'), Space: good('Space') })).toBe(false);
+    const { KeyK: _omitted, ...missingOne } = allGood();
+    expect(canAdvance(0, missingOne)).toBe(false);
   });
   it('gate is Hebrew-strict', () => {
     expect(GATE.minAccuracy).toBe(0.98);

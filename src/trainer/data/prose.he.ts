@@ -1,8 +1,8 @@
-// src/trainer/data/prose.he.ts
-// Public-domain Hebrew passages/proverbs. Verify licensing during content curation.
-export const PROSE_HE: Array<{ text: string; theme: string; source: string }> = [
-  { text: 'איזהו חכם הלומד מכל אדם', theme: 'wisdom', source: 'Pirkei Avot' },
-  { text: 'ואהבת לרעך כמוך', theme: 'wisdom', source: 'Leviticus' },
-  { text: 'הים הגדול נשקף מן החלון', theme: 'sea', source: 'seed' },
-  { text: 'הכוכבים דלקו בשמי הלילה', theme: 'space', source: 'seed' },
-];
+// Practice lines, drawn from the Siddur Ashkenaz corpus. Each line carries Metsudah's
+// translation of its segment where Sefaria publishes one. See siddur.he.ts for provenance.
+//
+// Replaces the former 4-passage seed.
+import { SIDDUR_LINES } from './siddur.he';
+import type { SiddurLine } from './siddur.he';
+
+export const PROSE_HE: SiddurLine[] = SIDDUR_LINES;

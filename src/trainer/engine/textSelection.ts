@@ -1,5 +1,5 @@
 import type { KeyCode } from '../types';
-import { codeForLetter, byCode } from '../data/hebrewLayout';
+import { codeForLetter, byCode, UNGATED_CODES } from '../data/hebrewLayout';
 
 const MIN_LETTER_KEYS_FOR_WORDS = 3;
 
@@ -24,7 +24,7 @@ export function weakKeyScore(word: string, confByCode: Record<KeyCode, number>):
 }
 
 function unlockedLetterKeys(unlocked: Set<KeyCode>): KeyCode[] {
-  return [...unlocked].filter(c => c !== 'Space');
+  return [...unlocked].filter(c => c !== 'Space' && !UNGATED_CODES.has(c));
 }
 
 // local: letter for a code (avoids importing byCode circularly in tests)
@@ -56,13 +56,13 @@ export interface SelectOpts {
 
 export function selectSentence(opts: {
   unlocked: Set<KeyCode>;
-  corpus: Array<{ text: string; theme: string; source: string }>;
+  corpus: Array<{ text: string; theme: string; source: string; gloss?: string }>;
   rng: () => number;
-}): { text: string; theme: string } | null {
+}): { text: string; theme: string; gloss: string } | null {
   const typable = opts.corpus.filter(p => wordIsTypable(p.text.replace(/ /g, ''), opts.unlocked));
   if (typable.length === 0) return null;
   const pick = typable[Math.floor(opts.rng() * typable.length)];
-  return { text: pick.text, theme: pick.theme };
+  return { text: pick.text, theme: pick.theme, gloss: pick.gloss ?? '' };
 }
 
 export function selectPractice(opts: SelectOpts): string {

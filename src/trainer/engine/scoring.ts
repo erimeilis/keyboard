@@ -11,8 +11,9 @@ export function computeSessionResult(log: SessionLog): SessionResult {
   const perKeyLatencies: Record<KeyCode, number[]> = {};
   const perKey: SessionResult['perKey'] = {};
   for (const p of positions) {
-    perKey[p.code] ??= { attempts: 0, errors: 0, medianLatency: 0 };
+    perKey[p.code] ??= { attempts: 0, errors: 0, medianLatency: 0, outcomes: [] };
     perKey[p.code].attempts += 1;
+    perKey[p.code].outcomes.push(p.firstTryCorrect);
     if (!p.firstTryCorrect) perKey[p.code].errors += 1;
     (perKeyLatencies[p.code] ??= []).push(p.latencyMs);
   }

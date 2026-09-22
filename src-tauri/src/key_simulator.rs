@@ -1,7 +1,6 @@
 use log::{info, error};
 use std::thread;
 use std::time::Duration;
-use crate::simulate_flag;
 
 #[cfg(target_os = "macos")]
 use core_graphics::event::{CGEvent, CGEventFlags, CGEventTapLocation, CGKeyCode};
@@ -23,7 +22,7 @@ fn get_frontmost_pid() -> Option<i32> {
     pid_str.trim().parse::<i32>().ok()
 }
 
-/// Marker value we set on simulated events so our rdev listener can ignore them.
+/// Marker value we set on simulated events so our CGEventTap listener can ignore them.
 #[cfg(target_os = "macos")]
 const SIMULATED_EVENT_MARKER: i64 = 0x4B42_4F56; // "KBOV"
 
@@ -129,7 +128,7 @@ fn post_key_event(source: &CGEventSource, keycode: CGKeyCode, key_down: bool, fl
             if !flags.is_empty() {
                 event.set_flags(flags);
             }
-            // Tag the event so our rdev listener can identify and skip it
+            // Tag the event so our CGEventTap listener can identify and skip it
             event.set_integer_value_field(
                 core_graphics::event::EventField::EVENT_SOURCE_USER_DATA,
                 SIMULATED_EVENT_MARKER,
@@ -173,9 +172,6 @@ pub fn simulate_key(key_code: String, modifiers: Vec<String>) {
             }
         };
 
-        // Tell the keyboard listener to ignore events while we simulate
-        simulate_flag::set_simulating(true);
-
         // Build modifier flags
         let mut flags = CGEventFlags::empty();
         for m in &modifiers {
@@ -204,7 +200,6 @@ pub fn simulate_key(key_code: String, modifiers: Vec<String>) {
         }
 
         thread::sleep(Duration::from_millis(10));
-        simulate_flag::set_simulating(false);
     }
 
     #[cfg(not(target_os = "macos"))]

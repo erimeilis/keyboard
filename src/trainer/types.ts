@@ -25,7 +25,19 @@ export type GuidanceMode = 'full' | 'auto' | 'dim' | 'hidden';
 export type Strictness = 'stop' | 'markThrough';
 export type CaptureSource = 'dom' | 'tap';
 
-export interface KeyStat { code: KeyCode; attempts: number; errors: number; latencies: number[] }
+export interface KeyStat {
+  code: KeyCode;
+  /** Lifetime totals, kept for the stats view. */
+  attempts: number;
+  errors: number;
+  latencies: number[];
+  /**
+   * First-try outcomes of the most recent attempts, newest last. Stage gating reads
+   * this rather than the lifetime totals, so improvement counts and early fumbling
+   * ages out. Absent on stats persisted before the window existed.
+   */
+  recent?: boolean[];
+}
 
 export interface Settings {
   guidanceMode: GuidanceMode;
@@ -38,6 +50,12 @@ export interface Progress {
   unlockedStageIndex: number;
   currentStageIndex: number;
   bestByStage: Record<number, { wpm: number; accuracy: number }>;
+  /**
+   * Which curriculum ladder these indices were recorded against. Absent on progress
+   * saved before the ladder was reshaped, which is exactly how that case is detected
+   * — a stage index alone cannot say which ladder it came from.
+   */
+  ladderVersion?: number;
 }
 
 export interface StreakState {
@@ -56,7 +74,9 @@ export interface SessionResult {
   wholeWordAccuracy: number;   // words all-first-try / total, 0..1
   durationMs: number;
   typedChars: number;
-  perKey: Record<KeyCode, { attempts: number; errors: number; medianLatency: number }>;
+  /** `outcomes` are this session's first-try results for the key, in order; they feed
+   *  the rolling accuracy window in KeyStat.recent. */
+  perKey: Record<KeyCode, { attempts: number; errors: number; medianLatency: number; outcomes: boolean[] }>;
 }
 
 export interface TrainerKeyView {

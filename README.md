@@ -33,6 +33,10 @@ Currently ships with a **Hebrew layout** (English + Hebrew dual labels). More ke
 - **📏 Resizable** — drag the corner handle to scale the keyboard up or down (0.5x–1.5x)
 - **🫧 Collapsible** — collapse to a tiny draggable pill icon, click to expand back
 - **🍎 Menu bar control** — tray icon with Show/Hide and Quit (no dock icon clutter)
+- **🎓 Hebrew typing trainer** — a full 10-finger course built on the overlay: a 10-stage
+  curriculum, per-key confidence tracking, accuracy-first gating, live RTL coloring,
+  four guidance modes, placement test, progress graphs, streaks and a ghost race
+  ([details](#-hebrew-typing-trainer))
 
 ## 🚀 Quick Start
 
@@ -82,8 +86,18 @@ keyboard/
 │   │   └── Keyboard.css          # Key themes (black/gray/red), press states
 │   ├── hooks/
 │   │   └── useKeyboardLayout.ts  # Polls active input source (Hebrew/English)
-│   └── utils/
-│       └── keyMapping.ts         # Maps backend key codes → component IDs
+│   ├── utils/
+│   │   └── keyMapping.ts         # Maps backend key codes → component IDs
+│   └── trainer/                  # Hebrew typing trainer
+│       ├── TrainerMode.tsx       # Shell: mode switching, settings, session loop
+│       ├── engine/               # Pure logic: curriculum, confidence, gating,
+│       │                         #   selection, scoring, error classification
+│       ├── components/           # PracticePanel, SessionSummary, StatsView, …
+│       ├── hooks/                # useTypingSession
+│       ├── keySource/            # DOM and Tauri-tap keystroke adapters
+│       ├── persistence/          # Settings / progress / stats storage
+│       ├── gamification/         # Streaks, stars, ghost race, charts
+│       └── data/                 # Layout, Siddur corpus, term glosses
 ├── src-tauri/                    # Rust backend
 │   └── src/
 │       ├── lib.rs                # App setup, NSPanel, tray icon, accessibility check
@@ -92,7 +106,9 @@ keyboard/
 │       ├── layout_detector_macos.rs  # TIS API — detects active keyboard layout
 │       └── simulate_flag.rs      # AtomicBool to prevent feedback loops
 ├── scripts/
-│   └── copy-build.js             # Copies build artifacts to build/
+│   ├── copy-build.js             # Copies build artifacts to build/
+│   ├── ingest-siddur.mjs         # Fetches the Siddur corpus from Sefaria
+│   └── build-corpus.mjs          # Shapes it into the bundled corpus JSON
 └── build/                        # Production .app and .dmg (gitignored)
 ```
 
@@ -118,6 +134,54 @@ Overlay click → React → Tauri command → CGEvent (simulator) → target app
 - **`post_to_pid`** instead of `post(Session)` — ensures keystrokes go to the correct app even when the overlay is clicked
 - **Event marker (`0x4B424F56`)** on simulated events — so the listener can filter out its own injected keystrokes and avoid feedback loops
 
+## 🎓 Hebrew typing trainer
+
+A 10-finger Hebrew course that runs inside the overlay. The keyboard you learn on is the
+keyboard on screen: keys light up, fingers are color-coded, and wrong keys are blocked and
+flashed rather than silently accepted.
+
+**How it teaches**
+
+| Piece | What it does |
+|---|---|
+| Curriculum | 10 stages, home row outward, sofit finals last |
+| Placement test | Seeds your starting stage instead of restarting from `כ`/`ח` |
+| Confidence model | Per-key accuracy *and* latency, not just hit rate |
+| Gating | Accuracy-first — a stage unlocks at 98% accuracy and 0.8 confidence |
+| Guidance modes | Full labels → auto → dimmed → hidden, as you stop needing them |
+| Error classification | Distinguishes sofit slips, confusable letters, and real-word mistypes |
+| Capture source | `dom` (focused window) or `tap` (CGEventTap, works unfocused) |
+
+**Corpus**
+
+Practice text is the real Siddur Ashkenaz, fetched from [Sefaria](https://www.sefaria.org/Siddur_Ashkenaz):
+**2,500+ lines** and **5,800+ unique terms**, replacing an earlier hand-typed seed. Both
+source versions are **CC-BY** — *The Metsudah siddur, 1981* and *Translation based on the
+Metsudah linear siddur, by Avrohom Davis, 1981* — and the app credits them on screen.
+
+Ingest normalizes the text for typing: HTML and inline footnotes stripped, niqqud and
+cantillation removed, maqaf and hyphen joiners split into separate terms, halachic rubric
+segments filtered out, and the Tetragrammaton written as `ה׳` so it is not drilled
+repeatedly. The geresh is therefore always-unlocked rather than gated behind a stage.
+
+Two levels of English are shown while you type. The **line translation is Metsudah's,
+quoted verbatim**; where Sefaria publishes no English for a source ref (about 44% of
+lines) no line translation is shown. The **per-term gloss is derived** — Sefaria has no
+term-level alignment, and its lexicon API has no context disambiguation (it glosses
+`מודה` as *"fashion"*). Derived glosses live in `src/trainer/data/glosses.he.ts`, are
+hand-maintained in frequency order, and an unglossed term renders nothing rather than a
+guess.
+
+To refresh the corpus:
+
+```bash
+node scripts/ingest-siddur.mjs    # fetch 456 refs from Sefaria (~5 min)
+node scripts/build-corpus.mjs     # shape into the bundled corpus JSON
+npm test                          # corpus invariants guard the normalization
+```
+
+`ingest-siddur.mjs` never rewrites `glosses.he.ts`.
+
 ## 🛠️ Development
 
 ```bash
@@ -142,6 +206,7 @@ npm run tauri:dev
 
 ## 🗺️ Roadmap
 
+- [ ] Extend derived term glosses beyond the highest-frequency terms
 - [ ] Additional keyboard layouts (Arabic, Chinese, Japanese, etc.)
 - [ ] Custom keyboard visual themes/skins
 - [ ] Windows and Linux support

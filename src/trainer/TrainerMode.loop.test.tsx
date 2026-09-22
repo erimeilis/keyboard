@@ -47,7 +47,7 @@ describe('TrainerMode loop', () => {
     store.set('trainer.progress', { unlockedStageIndex: 0, currentStageIndex: 0, bestByStage: {} });
     store.set('trainer.stats', { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } });
     const { src, press } = fakeSource();
-    render(<TrainerMode onExit={() => {}} store={store} makeSource={() => src} fixedTarget="כ" />);
+    render(<TrainerMode store={store} makeSource={() => src} fixedTarget="כ" />);
     await act(async () => { await Promise.resolve(); }); // let the layout poll resolve to Hebrew
     press('KeyF', 100); // 'כ' == KeyF
     // Scoped to SessionSummary's stat label: the summary phase now also renders
@@ -61,7 +61,7 @@ describe('TrainerMode loop', () => {
     store.set('trainer.progress', { unlockedStageIndex: 0, currentStageIndex: 0, bestByStage: {} });
     store.set('trainer.stats', { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } });
     const { src, press } = fakeSource();
-    const { container } = render(<TrainerMode onExit={() => {}} store={store} makeSource={() => src} fixedTarget="כ" />);
+    const { container } = render(<TrainerMode store={store} makeSource={() => src} fixedTarget="כ" />);
     await act(async () => { await Promise.resolve(); }); // let the layout poll resolve to Hebrew
     // No burst before any session completes.
     expect(container.querySelector('.celebration.active')).toBeNull();

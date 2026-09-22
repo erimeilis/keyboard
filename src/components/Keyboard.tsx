@@ -113,7 +113,9 @@ export const Keyboard: React.FC<{ trainerView?: KeyboardView }> = ({ trainerView
         <div className="keyboard-row">
           <Key variant="single" label="tab⇥" width={81} id="tab" isPressed={isKeyPressed('tab')} onMouseClick={() => handleKeyClick('Tab')} />
           <Key variant="dualPos" primary="Q" secondary="/" id="kq" isPressed={isKeyPressed('kq')} onMouseClick={() => handleKeyClick('KeyQ')} />
-          <Key variant="dualPos" primary="W" secondary="'" id="kw" isPressed={isKeyPressed('kw')} onMouseClick={() => handleKeyClick('KeyW')} />
+          {/* The Israeli layout puts the geresh here; the trainer types it in ה׳, so the
+              label shows the character the key actually produces. */}
+          <Key variant="dualPos" primary="W" secondary="׳" id="kw" isPressed={isKeyPressed('kw')} onMouseClick={() => handleKeyClick('KeyW')} />
           <Key variant="dualPos" primary="E" secondary="ק" id="ke" isPressed={isKeyPressed('ke')} onMouseClick={() => handleKeyClick('KeyE')} />
           <Key variant="dualPos" primary="R" secondary="ר" id="kr" isPressed={isKeyPressed('kr')} onMouseClick={() => handleKeyClick('KeyR')} />
           <Key variant="dualPos" primary="T" secondary="א" id="kt" isPressed={isKeyPressed('kt')} onMouseClick={() => handleKeyClick('KeyT')} />

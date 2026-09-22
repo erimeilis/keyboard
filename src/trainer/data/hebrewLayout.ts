@@ -15,6 +15,9 @@ export const HE_LAYOUT: LayoutKey[] = [
   { code: 'KeyL', componentId: 'kl', letter: 'ך', finger: 'r-ring',   isSofit: true  },
   { code: 'Semicolon', componentId: 'semi', letter: 'ף', finger: 'r-pinky', isSofit: true },
   // top row
+  // Geresh: not a letter, but the ה׳ substitution for the divine name needs it, so it is
+  // always unlocked (see unlockedCodesForStage) rather than gated behind a stage.
+  { code: 'KeyW', componentId: 'kw', letter: '׳', finger: 'l-ring',   isSofit: false },
   { code: 'KeyE', componentId: 'ke', letter: 'ק', finger: 'l-middle', isSofit: false },
   { code: 'KeyR', componentId: 'kr', letter: 'ר', finger: 'l-index',  isSofit: false },
   { code: 'KeyT', componentId: 'kt', letter: 'א', finger: 'l-index',  isSofit: false },
@@ -40,6 +43,14 @@ export const HE_LAYOUT: LayoutKey[] = [
 export const byCode: Record<KeyCode, LayoutKey> = Object.fromEntries(HE_LAYOUT.map(k => [k.code, k]));
 export const byLetter: Record<Letter, LayoutKey> = Object.fromEntries(HE_LAYOUT.map(k => [k.letter, k]));
 export const byComponentId: Record<ComponentId, LayoutKey> = Object.fromEntries(HE_LAYOUT.map(k => [k.componentId, k]));
+
+/**
+ * Always-unlocked keys that must never gate stage advancement. The geresh only ever
+ * occurs inside real text (ה׳), so a learner on an early stage cannot accumulate stats
+ * for it — requiring mastery would block advancement permanently. Space is excluded
+ * from letter counts too, but it IS drilled, so it keeps gating.
+ */
+export const UNGATED_CODES: ReadonlySet<KeyCode> = new Set(['KeyW']);
 
 export const SOFIT_PAIRS: Array<{ sofit: Letter; regular: Letter }> = [
   { sofit: 'ך', regular: 'כ' },

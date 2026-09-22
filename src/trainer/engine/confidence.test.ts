@@ -25,4 +25,33 @@ describe('confidence', () => {
     expect(c).toBeGreaterThan(0);
     expect(c).toBeLessThan(0.7);
   });
+
+  describe('recent-window accuracy', () => {
+    // Lifetime accuracy made every stage gate recede as a learner practised: at a 98%
+    // bar, 20 old errors on a key demanded 1,000 attempts to clear. Accuracy is judged
+    // over a window of recent attempts instead, the way latencies already are.
+    const recent = (o: Partial<KeyStat>): KeyStat => stat(o);
+
+    it('uses the recent window when one is present, not the lifetime totals', () => {
+      // 20 lifetime errors, but the last attempts were all clean.
+      const s = recent({ attempts: 400, errors: 20, recent: Array(50).fill(true) });
+      expect(accuracyFor(s)).toBe(1);
+    });
+
+    it('still reflects recent mistakes', () => {
+      const s = recent({ attempts: 400, errors: 20, recent: [...Array(48).fill(true), false, false] });
+      expect(accuracyFor(s)).toBeCloseTo(0.96);
+    });
+
+    it('falls back to lifetime totals when no window has been recorded yet', () => {
+      // Stats persisted before the window existed must keep working.
+      expect(accuracyFor(recent({ attempts: 10, errors: 1 }))).toBeCloseTo(0.9);
+    });
+
+    it('lets a learner recover from a bad start', () => {
+      // The case that motivated this: early fumbling then sustained clean practice.
+      const s = recent({ attempts: 120, errors: 18, recent: Array(50).fill(true) });
+      expect(accuracyFor(s)).toBeGreaterThanOrEqual(0.98);
+    });
+  });
 });

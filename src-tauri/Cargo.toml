@@ -15,20 +15,25 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.4", features = [] }
+tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 env_logger = "0.11"
-tauri = { version = "2.10.0", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri = { version = "2.11.6", features = ["macos-private-api", "tray-icon", "image-png"] }
 tauri-plugin-log = "2"
-rdev = { git = "https://github.com/fufesou/rdev" }
 tokio = { version = "1", features = ["time"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation = "0.9"
+core-foundation = "0.10"
 core-foundation-sys = "0.8"
-core-graphics = { version = "0.22", features = ["elcapitan"] }
+core-graphics = { version = "0.25", features = ["elcapitan"] }
+window-vibrancy = "0.6"
+# Re-exported by tauri-nspanel too, but named directly because titlebar_macos.rs
+# defines an Objective-C class and needs the macros at the crate root.
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+objc2-foundation = "0.3"
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }

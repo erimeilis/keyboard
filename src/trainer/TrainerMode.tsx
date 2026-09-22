@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Keyboard } from '../components/Keyboard';
 import { TrainerTitlebar } from './components/TrainerTitlebar';
@@ -20,7 +19,8 @@ import { computeSessionResult } from './engine/scoring';
 import { selectPractice, selectSentence } from './engine/textSelection';
 import { COMMON_WORDS_HE } from './data/words.he';
 import { PROSE_HE } from './data/prose.he';
-import { unlockedCodesForStage, SOFIT_STAGE_INDEX } from './engine/curriculum';
+import { SIDDUR_CREDIT } from './data/siddur.he';
+import { unlockedCodesForStage, SOFIT_STAGE_INDEX, clampStageIndex } from './engine/curriculum';
 import { confidenceFor } from './engine/confidence';
 import { canAdvance } from './engine/gating';
 import { createLocalStorageStore } from './persistence/storage';
@@ -40,13 +40,12 @@ import './components/trainer.css';
 type PracticeMode = 'drills' | 'words' | 'prose' | 'custom';
 
 interface Props {
-  onExit: () => void;
   store?: TrainerStore;
   makeSource?: (s: Settings) => KeySource;
   fixedTarget?: string; // test hook; when set, skip selection randomness
 }
 
-export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSource, fixedTarget }) => {
+export const TrainerMode: React.FC<Props> = ({ store: injStore, makeSource, fixedTarget }) => {
   const store = useMemo(() => injStore ?? createLocalStorageStore(), [injStore]);
   const [settings, setSettings] = useState<Settings>(() => loadSettings(store));
   const updateSettings = (patch: Partial<Settings>) => {
@@ -103,18 +102,13 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     [source],
   );
 
-  useEffect(() => {
-    invoke('set_trainer_mode', { active: true }).catch(console.error);
-    return () => { invoke('set_trainer_mode', { active: false }).catch(console.error); };
-  }, []);
-
   // text and theme must come from the same selectSentence() call — computing them
   // via two separate memoized calls could desync (different rng draw) across renders.
-  const targetInfo = useMemo<{ text: string; theme: string }>(() => {
-    if (fixedTarget != null) return { text: fixedTarget, theme: 'default' };
+  const targetInfo = useMemo<{ text: string; theme: string; gloss: string }>(() => {
+    if (fixedTarget != null) return { text: fixedTarget, theme: 'default', gloss: '' };
     // Custom mode: the sanitized pasted text is the fixed session target —
     // never re-derived from the curriculum/corpus selection below.
-    if (mode === 'custom') return { text: customText, theme: 'default' };
+    if (mode === 'custom') return { text: customText, theme: 'default', gloss: '' };
     const unlocked = unlockedCodesForStage(progress.currentStageIndex);
     const confByCode: Record<KeyCode, number> = {};
     for (const [code, st] of Object.entries(stats)) confByCode[code] = confidenceFor(st);
@@ -125,16 +119,18 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     const preferProse = mode === 'prose' || (mode === 'words' && progress.currentStageIndex >= SOFIT_STAGE_INDEX);
     if (preferProse) {
       const sentence = selectSentence({ unlocked, corpus: PROSE_HE, rng: Math.random });
-      if (sentence) return { text: sentence.text, theme: sentence.theme };
+      if (sentence) return { text: sentence.text, theme: sentence.theme, gloss: sentence.gloss };
     }
     const corpus = mode === 'drills' ? [] : COMMON_WORDS_HE;
     return {
       text: selectPractice({ unlocked, confByCode, corpus, targetChars: 40, rng: Math.random }),
       theme: 'default',
+      gloss: '',
     };
   }, [progress.currentStageIndex, stats, fixedTarget, phase, mode, customText]);
   const target = targetInfo.text;
   const theme = targetInfo.theme;
+  const gloss = targetInfo.gloss;
 
   const finishSession = (log: SessionLog) => {
     const r = computeSessionResult(log);
@@ -148,7 +144,9 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
     }
     const advanced = canAdvance(progress.currentStageIndex, merged);
     if (advanced) {
-      const next = { ...progress, currentStageIndex: progress.currentStageIndex + 1, unlockedStageIndex: progress.currentStageIndex + 1 };
+      // Clamped: the last stage is the end of the ladder, not a step to advance past.
+      const nextIndex = clampStageIndex(progress.currentStageIndex + 1);
+      const next = { ...progress, currentStageIndex: nextIndex, unlockedStageIndex: nextIndex };
       setProgress(next); saveProgress(store, next);
     }
     const nextHistory = [...history, { wpm: r.wpm, accuracy: r.accuracy }].slice(-100);
@@ -164,7 +162,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   if (phase === 'placement') {
     return (
       <div className="trainer-mode">
-        <TrainerTitlebar onExit={onExit} />
+        <TrainerTitlebar />
         {layout !== 'he' && (
           <div className="lang-warning">⌨ Switch your keyboard to Hebrew — keystrokes only count while Hebrew input is active.</div>
         )}
@@ -178,7 +176,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
   return (
     <div className="trainer-mode">
       <Celebration trigger={celebrateTrigger} />
-      <TrainerTitlebar onExit={onExit} />
+      <TrainerTitlebar />
       {layout !== 'he' && (
         <div className="lang-warning">⌨ Switch your keyboard to Hebrew — keystrokes only count while Hebrew input is active.</div>
       )}
@@ -196,12 +194,14 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
             </button>
           ))}
         </div>
+        {/* Each select releases focus once its value changes: a focused control keeps
+            receiving the practice keystrokes, and the trainer is the thing being typed into. */}
         <div className="settings-controls">
           <label>
             Guidance:
             <select
               value={settings.guidanceMode}
-              onChange={e => updateSettings({ guidanceMode: e.target.value as Settings['guidanceMode'] })}
+              onChange={e => { updateSettings({ guidanceMode: e.target.value as Settings['guidanceMode'] }); e.currentTarget.blur(); }}
             >
               <option value="full">Full</option>
               <option value="auto">Auto</option>
@@ -213,7 +213,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
             Errors:
             <select
               value={settings.strictness}
-              onChange={e => updateSettings({ strictness: e.target.value as Settings['strictness'] })}
+              onChange={e => { updateSettings({ strictness: e.target.value as Settings['strictness'] }); e.currentTarget.blur(); }}
             >
               <option value="stop">Stop on error</option>
               <option value="markThrough">Mark &amp; continue</option>
@@ -223,7 +223,7 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
             Capture:
             <select
               value={settings.captureSource}
-              onChange={e => updateSettings({ captureSource: e.target.value as Settings['captureSource'] })}
+              onChange={e => { updateSettings({ captureSource: e.target.value as Settings['captureSource'] }); e.currentTarget.blur(); }}
             >
               <option value="dom">In-app (focus)</option>
               <option value="tap">Global tap</option>
@@ -248,10 +248,14 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
           {mode === 'custom' && customText === '' ? (
             <p className="custom-empty">Paste Hebrew text above to practice.</p>
           ) : (
-            <TypingSession source={gatedSource} target={target} theme={theme} strictness={settings.strictness}
+            <TypingSession source={gatedSource} target={target} theme={theme} gloss={gloss} strictness={settings.strictness}
               stats={stats} guidance={settings.guidanceMode} onComplete={finishSession}
               ghost={ghosts[progress.currentStageIndex] ?? []} />
           )}
+          {/* CC-BY requires attribution wherever the text is shown. */}
+          <p className="siddur-credit">
+            {SIDDUR_CREDIT.hebrew} · {SIDDUR_CREDIT.english} · {SIDDUR_CREDIT.license} via Sefaria
+          </p>
         </>
       )}
     </div>
@@ -260,11 +264,11 @@ export const TrainerMode: React.FC<Props> = ({ onExit, store: injStore, makeSour
 
 // Inner component so the session hook can drive the keyboard view.
 const TypingSession: React.FC<{
-  source: KeySource; target: string; theme: string; strictness: Settings['strictness'];
+  source: KeySource; target: string; theme: string; gloss: string; strictness: Settings['strictness'];
   stats: Record<KeyCode, KeyStat>; guidance: Settings['guidanceMode'];
   onComplete: (log: SessionLog) => void;
   ghost: number[];
-}> = ({ source, target, theme, strictness, stats, guidance, onComplete, ghost }) => {
+}> = ({ source, target, theme, gloss, strictness, stats, guidance, onComplete, ghost }) => {
   const { faultClass, flash } = useFaultFlash();
   // Remembers which key the flash belongs to: in markThrough mode `index` (and thus
   // `nextCode`) advances past the mistyped position on the very keystroke that triggers
@@ -299,7 +303,7 @@ const TypingSession: React.FC<{
       <GhostBar ghost={ghost} elapsedMs={elapsedMs} total={s.expectedCodes.length} />
       <LiveStats correct={correct} errors={s.errorCount} />
       <ThemeBackground theme={theme} />
-      <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} />
+      <PracticePanel target={target} statuses={s.statuses} index={s.index} lastMistake={s.lastMistake} gloss={gloss} />
       <Keyboard trainerView={view} />
     </>
   );

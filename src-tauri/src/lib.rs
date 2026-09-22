@@ -2,10 +2,12 @@
 
 mod keyboard_listener;
 mod key_simulator;
-mod simulate_flag;
 
 #[cfg(target_os = "macos")]
 mod layout_detector_macos;
+
+#[cfg(target_os = "macos")]
+mod titlebar_macos;
 
 use log::{error, info, warn};
 use tauri::{Emitter, Manager, RunEvent};
@@ -13,7 +15,7 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 
 #[cfg(target_os = "macos")]
-use tauri_nspanel::{tauri_panel, ManagerExt, StyleMask, WebviewWindowExt};
+use tauri_nspanel::{tauri_panel, CollectionBehavior, ManagerExt, StyleMask, WebviewWindowExt};
 
 // Define a non-activating panel class: can't become key window, floats above other windows
 #[cfg(target_os = "macos")]
@@ -39,6 +41,139 @@ fn get_active_keyboard_layout() -> String {
     }
 }
 
+/// The accent colour the user picked in System Settings, as `#rrggbb`.
+///
+/// CSS cannot supply this here: the `AccentColor` system colour is unsupported by the
+/// WKWebView this app runs in, so `@supports (color: AccentColor)` is false and the
+/// stylesheet silently falls back to Apple's default blue — while AppKit, which draws
+/// the native `<select>` popup, uses the real accent. That mismatch is visible as a blue
+/// pill next to an orange menu highlight. Reading `NSColor.controlAccentColor` is the
+/// same source AppKit itself uses, so the two agree.
+#[tauri::command]
+fn get_accent_color() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_nspanel::objc2_app_kit::{NSColor, NSColorSpace};
+
+        // controlAccentColor is a dynamic colour; it has no components until resolved
+        // into a concrete colour space.
+        let accent = NSColor::controlAccentColor();
+        let srgb = accent.colorUsingColorSpace(&NSColorSpace::sRGBColorSpace())?;
+        let to_byte = |c: f64| (c.clamp(0.0, 1.0) * 255.0).round() as u8;
+        Some(format!(
+            "#{:02x}{:02x}{:02x}",
+            to_byte(srgb.redComponent()),
+            to_byte(srgb.greenComponent()),
+            to_byte(srgb.blueComponent()),
+        ))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        None // The stylesheet's own fallback applies.
+    }
+}
+
+/// Puts a translucent system material behind the webview.
+///
+/// macOS 27 ships Liquid Glass as `NSGlassEffectView`, confirmed present at runtime here.
+/// There is no Rust binding for it yet (objc2-app-kit 0.3.2 predates the class), so it is
+/// reached through the Objective-C runtime by name — which doubles as the capability
+/// check: on any system without the class we fall back to `NSVisualEffectView`, the
+/// pre-26 material, via window-vibrancy.
+///
+/// CSS cannot substitute for this. `backdrop-filter` samples only what is inside the
+/// page, and the window is transparent, so it would blur nothing at all.
+/// The glass view, held as an address (AppKit objects are not Send/Sync) so it can be
+/// hidden again. The overlay is a floating keyboard with a transparent window: a
+/// material filling the content view paints a slab behind the keys, which is not what
+/// an overlay should look like. It belongs to trainer mode only.
+#[cfg(target_os = "macos")]
+static GLASS_PTR: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+
+/// Shows or hides the window material. Paired with the trainer, like the buttons.
+#[cfg(target_os = "macos")]
+fn set_material_visible(visible: bool) {
+    use tauri_nspanel::objc2::msg_send;
+    use tauri_nspanel::objc2::runtime::AnyObject;
+    let Some(&p) = GLASS_PTR.get() else { return };
+    unsafe {
+        let view = p as *mut AnyObject;
+        let _: () = msg_send![view, setHidden: !visible];
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn apply_window_material(window: &tauri::WebviewWindow) {
+    use tauri_nspanel::objc2::runtime::AnyObject;
+    use tauri_nspanel::objc2::msg_send;
+
+    let ns_view = match window.ns_view() {
+        Ok(v) if !v.is_null() => v as *mut AnyObject,
+        _ => {
+            warn!("apply_window_material: no ns_view; leaving the window opaque");
+            return;
+        }
+    };
+
+    let glass_class = tauri_nspanel::objc2::runtime::AnyClass::get(c"NSGlassEffectView");
+
+    if let Some(class) = glass_class {
+        unsafe {
+            // The webview's own view; the material goes behind it as a sibling at index 0.
+            let superview: *mut AnyObject = msg_send![ns_view, superview];
+            let host = if superview.is_null() { ns_view } else { superview };
+
+            let glass: *mut AnyObject = msg_send![class, alloc];
+            let glass: *mut AnyObject = msg_send![glass, init];
+            if glass.is_null() {
+                warn!("apply_window_material: NSGlassEffectView init returned nil");
+                return;
+            }
+
+            let bounds: tauri_nspanel::objc2_foundation::NSRect = msg_send![host, bounds];
+            let _: () = msg_send![glass, setFrame: bounds];
+            // width | height, so it tracks the window as it resizes.
+            let _: () = msg_send![glass, setAutoresizingMask: 2usize | 16usize];
+            // NSWindowBelow == -1: place it under the webview rather than over it.
+            let _: () = msg_send![host, addSubview: glass, positioned: -1isize, relativeTo: std::ptr::null::<AnyObject>()];
+            // Hidden until the trainer opens; the overlay must stay see-through.
+            let _: () = msg_send![glass, setHidden: true];
+            let _ = GLASS_PTR.set(glass as usize);
+
+            info!("Liquid Glass (NSGlassEffectView) applied (hidden until trainer mode)");
+            return;
+        }
+    }
+
+    match window_vibrancy::apply_vibrancy(
+        window,
+        window_vibrancy::NSVisualEffectMaterial::HudWindow,
+        None,
+        None,
+    ) {
+        Ok(()) => info!("NSGlassEffectView absent; applied NSVisualEffectView vibrancy instead"),
+        Err(e) => warn!("apply_window_material: vibrancy unavailable ({e}); window stays opaque"),
+    }
+}
+
+/// Frontend diagnostics, in the same log as the native side so one trace shows a
+/// click travelling button -> event -> route -> effect. Info level, sparse by design.
+#[tauri::command]
+fn frontend_log(msg: String) {
+    info!("[frontend] {msg}");
+}
+
+/// Shows or hides the native window buttons. The collapsed pill is a 48px circle with
+/// no titlebar, so the buttons must not float over it.
+#[tauri::command]
+fn set_window_buttons_visible(visible: bool) {
+    #[cfg(target_os = "macos")]
+    titlebar_macos::set_visible(visible);
+    #[cfg(not(target_os = "macos"))]
+    let _ = visible;
+}
+
 /// Applies the exact non-activating overlay configuration to a `main`-window panel: sets the
 /// `NonactivatingPanel` style-mask bit (so mouse clicks on the panel don't activate the app),
 /// keeps it visible when the app deactivates, only lets it become key when strictly needed, and
@@ -46,9 +181,16 @@ fn get_active_keyboard_layout() -> String {
 /// revert so the two conversion sites can never drift out of sync.
 #[cfg(target_os = "macos")]
 fn configure_nonactivating_panel<R: tauri::Runtime>(panel: &tauri_nspanel::PanelHandle<R>) {
-    panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
+    if let Err(e) = panel.set_style_mask(StyleMask::empty().nonactivating_panel().into()) {
+        error!("Failed to set NonactivatingPanel style mask: {e:?} — the overlay may steal focus");
+    }
     panel.set_hides_on_deactivate(false);
     panel.set_becomes_key_only_if_needed(true);
+    // macOS defaults "Displays have separate Spaces" to ON, which makes each display its own
+    // Space. Without CanJoinAllSpaces the panel stays bound to the Space it was created in, so
+    // dragging it to a second monitor leaves it reporting valid on-screen bounds there while
+    // never being composited into the Space you are looking at — it simply vanishes.
+    panel.set_collection_behavior(CollectionBehavior::new().can_join_all_spaces().into());
     panel.order_front_regardless();
 }
 
@@ -67,6 +209,7 @@ fn configure_nonactivating_panel<R: tauri::Runtime>(panel: &tauri_nspanel::Panel
 /// corrupt the next `to_window()` restore).
 #[cfg(target_os = "macos")]
 fn apply_trainer_mode(app: &tauri::AppHandle, active: bool) {
+    info!("apply_trainer_mode(active={active})");
     if active {
         // Convert the non-activating panel back into a plain, focusable window so it can take
         // key-window / keyboard focus. Convert only when `main` is currently a panel.
@@ -142,6 +285,21 @@ fn apply_trainer_mode(app: &tauri::AppHandle, active: bool) {
             error!("set_trainer_mode(false): failed to set Accessory activation policy: {e}");
         }
     }
+
+    // AFTER the conversion, never before. to_window()/to_panel() swizzle the window's
+    // class and AppKit re-adopts the standard buttons, restoring their built-in target
+    // and action — so anything applied earlier in this function is undone by the time
+    // it returns. The symptom was the third button reverting to a plain zoom after one
+    // overlay -> trainer -> overlay round trip.
+    //
+    // The buttons serve both modes (the frontend routes clicks by mode), so they stay
+    // visible; only their position and tint change. The material is trainer-only:
+    // behind the overlay it would paint a slab where there should be nothing.
+    titlebar_macos::set_visible(true);
+    titlebar_macos::bind_actions();
+    // In the overlay the third button opens the trainer, which green does not say.
+    titlebar_macos::set_zoom_tinted(!active);
+    set_material_visible(active);
 }
 
 /// Toggles the window between the non-activating `KeyboardPanel` overlay and a regular,
@@ -229,6 +387,11 @@ pub fn run() {
       #[cfg(target_os = "macos")]
       {
           if let Some(window) = app.get_webview_window("main") {
+              // Before the panel swizzle, while the view hierarchy is still plain.
+              apply_window_material(&window);
+              titlebar_macos::install(&window, app.handle().clone());
+              // Launches into the overlay, where the third button opens the trainer.
+              titlebar_macos::set_zoom_tinted(true);
               let panel = window.to_panel::<KeyboardPanel>().unwrap();
               // Apply the non-activating overlay configuration (shared with the
               // set_trainer_mode revert path so the two conversion sites stay in sync).
@@ -265,6 +428,9 @@ pub fn run() {
                               let _ = window.hide();
                           } else {
                               let _ = window.show();
+                              // The frontend un-collapses on this, so "show" never
+                              // surfaces just the 48px pill.
+                              let _ = app_handle.emit("restore-window", ());
                           }
                       }
                   }
@@ -273,6 +439,7 @@ pub fn run() {
                       // (which invokes set_trainer_mode to transform the window).
                       if let Some(window) = app_handle.get_webview_window("main") {
                           let _ = window.show();
+                          let _ = app_handle.emit("restore-window", ());
                       }
                       if let Err(e) = app_handle.emit("toggle-trainer", ()) {
                           error!("Failed to emit toggle-trainer event: {:?}", e);
@@ -289,7 +456,7 @@ pub fn run() {
 
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![get_active_keyboard_layout, key_simulator::simulate_key, set_trainer_mode])
+    .invoke_handler(tauri::generate_handler![get_active_keyboard_layout, get_accent_color, key_simulator::simulate_key, set_trainer_mode, set_window_buttons_visible, frontend_log])
     .build(tauri::generate_context!())
     .expect("error while building tauri application");
 
@@ -299,6 +466,7 @@ pub fn run() {
         if let Some(window) = app_handle.get_webview_window("main") {
           let _ = window.show();
           let _ = window.set_focus();
+          let _ = app_handle.emit("restore-window", ());
         }
       }
     }

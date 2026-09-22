@@ -2,8 +2,13 @@ import type { TrainerStore } from './storage';
 import { STORAGE_KEYS } from './storage';
 import type { Settings, Progress, KeyStat, SessionResult, KeyCode, StreakState } from '../types';
 import { DEFAULT_SETTINGS } from '../types';
+import { clampStageIndex, migrateStageIndex, LADDER_VERSION } from '../engine/curriculum';
 
 const LATENCY_WINDOW = 20;
+// Attempts per key that stage gating judges accuracy over. Long enough that the 98%
+// bar still means sustained accuracy, short enough that a learner's early fumbling
+// stops counting against them once they have moved past it.
+const ACCURACY_WINDOW = 50;
 
 export function loadSettings(store: TrainerStore): Settings {
   return store.get<Settings>(STORAGE_KEYS.settings, DEFAULT_SETTINGS);
@@ -13,7 +18,28 @@ export function saveSettings(store: TrainerStore, s: Settings): void {
 }
 
 export function loadProgress(store: TrainerStore): Progress {
-  return store.get<Progress>(STORAGE_KEYS.progress, { unlockedStageIndex: 0, currentStageIndex: 0, bestByStage: {} });
+  const fresh: Progress = {
+    unlockedStageIndex: 0,
+    currentStageIndex: 0,
+    bestByStage: {},
+    ladderVersion: LADDER_VERSION,
+  };
+  const saved = store.get<Progress>(STORAGE_KEYS.progress, fresh);
+
+  // Unversioned progress was recorded against the ten-stage ladder, where the same
+  // number meant a different stage. Translate rather than clamp, or a learner is
+  // silently moved several stages ahead of what they earned.
+  const stale = saved.ladderVersion !== LADDER_VERSION;
+  const convert = stale ? migrateStageIndex : clampStageIndex;
+
+  return {
+    ...saved,
+    currentStageIndex: convert(saved.currentStageIndex),
+    unlockedStageIndex: convert(saved.unlockedStageIndex),
+    // bestByStage is keyed by stage index too, but those are records of past runs
+    // rather than position, so they are left alone instead of being renumbered.
+    ladderVersion: LADDER_VERSION,
+  };
 }
 export function saveProgress(store: TrainerStore, p: Progress): void {
   store.set(STORAGE_KEYS.progress, p);
@@ -59,7 +85,17 @@ export function mergeSessionStats(
   for (const [code, s] of Object.entries(result.perKey)) {
     const cur = next[code] ?? { code, attempts: 0, errors: 0, latencies: [] };
     const latencies = [...cur.latencies, s.medianLatency].slice(-LATENCY_WINDOW);
-    next[code] = { code, attempts: cur.attempts + s.attempts, errors: cur.errors + s.errors, latencies };
+    // Both sides are optional: stats persisted before the window existed have no
+    // `recent`, and a result decoded from older storage has no `outcomes`.
+    const recent = [...(cur.recent ?? []), ...(s.outcomes ?? [])].slice(-ACCURACY_WINDOW);
+    next[code] = {
+      code,
+      // Lifetime totals still accumulate; only gating reads the window.
+      attempts: cur.attempts + s.attempts,
+      errors: cur.errors + s.errors,
+      latencies,
+      recent,
+    };
   }
   return next;
 }

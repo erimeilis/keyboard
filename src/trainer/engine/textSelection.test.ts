@@ -19,13 +19,23 @@ describe('textSelection', () => {
   });
 
   it('falls back to finger drills when too few keys are unlocked', () => {
+    // Built from an explicit key set rather than a stage: the fallback is a property of
+    // selectPractice, and tying it to stage 0 broke when the ladder changed.
     const out = selectPractice({
-      unlocked: unlockedCodesForStage(0), // only KeyF, KeyJ, Space
+      unlocked: new Set(['KeyF', 'KeyJ', 'Space']), // כ ח only
       confByCode: {}, corpus: ['שלום', 'בית'], targetChars: 12, rng: seededRng([0.1, 0.9]),
     });
-    // Only כ (F) and ח (J) available -> no real word -> drill of those letters
     expect(out.replace(/\s/g, '').split('').every(ch => ch === 'כ' || ch === 'ח')).toBe(true);
     expect(out.length).toBeGreaterThan(0);
+  });
+
+  it('gives real words from the very first stage', () => {
+    // The whole point of starting on the full home row: no drills-only opening.
+    const out = selectPractice({
+      unlocked: unlockedCodesForStage(0),
+      confByCode: {}, corpus: ['שלום', 'לכל', 'חג'], targetChars: 12, rng: seededRng([0.1, 0.9]),
+    });
+    expect(out.split(' ').some(w => ['שלום', 'לכל', 'חג'].includes(w))).toBe(true);
   });
 
   it('produces only typable real words when enough keys are unlocked', () => {

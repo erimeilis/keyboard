@@ -27,8 +27,10 @@
 }
 
 /* Drag bar — thin area above keyboard for dragging and controls */
+/* 32px to match the measured macOS titlebar, so the native window buttons sit
+   correctly here as well as in the trainer. */
 .drag-bar {
-  height: 24px;
+  height: 32px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -40,42 +42,14 @@
 }
 
 /* Window controls — inside drag bar, visible on hover */
+/* Footprint only: the three controls are real AppKit window buttons drawn over the
+   webview (titlebar_macos.rs), so nothing is painted here. 3 x 14px plus two 9px
+   gaps, matching the measured metrics. They no longer fade in on hover — AppKit
+   owns their appearance, including the inactive state. */
 .window-controls {
-  display: flex;
-  gap: 6px;
-  padding-left: 8px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.app-container:hover .window-controls {
-  opacity: 1;
-}
-
-.control-btn {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: filter 0.1s ease;
-}
-
-.control-btn:hover {
-  filter: brightness(1.2);
-}
-
-.control-btn.close {
-  background: #ff5f57;
-}
-
-.control-btn.collapse {
-  background: #febc2e;
-}
-
-.control-btn.trainer {
-  background: #0a84ff;
+  width: 60px;
+  height: 14px;
+  flex: none;
 }
 
 /* Collapsed pill */

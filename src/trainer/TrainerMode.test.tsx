@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // vi.mock factories are hoisted above top-level statements, so a plain `const invoke =
@@ -16,8 +16,17 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 // Keyboard (rendered inside TrainerMode) sets up a `keyboard-state` listener via
 // @tauri-apps/api/event — mock it so mounting TrainerMode doesn't leave an unhandled
 // rejection dangling (see Keyboard.test.tsx for the same pattern).
+// Captures the registered handlers so a native titlebar click can be simulated: the
+// window buttons are real AppKit views now, so they emit an event rather than being
+// DOM nodes a test can click.
+const { listeners } = vi.hoisted(() => ({
+  listeners: new Map<string, (e: { payload: unknown }) => void>(),
+}));
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn((_event, _callback) => Promise.resolve(() => {})),
+  listen: vi.fn((event: string, callback: (e: { payload: unknown }) => void) => {
+    listeners.set(event, callback);
+    return Promise.resolve(() => listeners.delete(event));
+  }),
 }));
 
 // TrainerMode's focus gate + TrainerTitlebar call getCurrentWindow(); stub it so mounting
@@ -36,27 +45,14 @@ import { createMemoryStore } from './persistence/storage';
 import { loadSettings } from './persistence/useTrainerState';
 
 describe('TrainerMode', () => {
-  it('enters trainer mode on mount and exits on unmount', () => {
-    const onExit = vi.fn();
-    const { unmount } = render(<TrainerMode onExit={onExit} />);
-    expect(invoke).toHaveBeenCalledWith('set_trainer_mode', { active: true });
-    unmount();
-    expect(invoke).toHaveBeenCalledWith('set_trainer_mode', { active: false });
-  });
-
-  it('calls onExit when the Exit button is clicked', () => {
-    const onExit = vi.fn();
-    render(<TrainerMode onExit={onExit} />);
-    fireEvent.click(screen.getByRole('button', { name: /exit/i }));
-    expect(onExit).toHaveBeenCalled();
-  });
+  beforeEach(() => listeners.clear());
 
   it('updates and persists settings when the topbar controls change', () => {
     const store = createMemoryStore();
     // Pre-seed stats so the component skips the placement phase (which has no
     // settings controls) and lands directly on the typing topbar.
     store.set('trainer.stats', { KeyF: { code: 'KeyF', attempts: 1, errors: 0, latencies: [200] } });
-    render(<TrainerMode onExit={() => {}} store={store} />);
+    render(<TrainerMode store={store} />);
 
     const guidanceSelect = screen.getByLabelText(/guidance/i) as HTMLSelectElement;
     expect(guidanceSelect.value).toBe('full');

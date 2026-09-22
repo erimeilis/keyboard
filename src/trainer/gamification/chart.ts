@@ -1,7 +1,9 @@
 // src/trainer/chart.ts
 export function linePoints(values: number[], width: number, height: number): string {
   if (values.length === 0) return '';
-  if (values.length === 1) return `0,${height / 2}`;
+  // Both ends, not one point: a <polyline> with a single point paints nothing, so after
+  // the very first session the chart was an empty box under its heading.
+  if (values.length === 1) return `0,${height / 2} ${width},${height / 2}`;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1;

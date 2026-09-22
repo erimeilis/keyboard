@@ -1,9 +1,8 @@
-// Curated common Hebrew words (no niqqud). Ordered roughly by frequency.
-// Seed set — expand during content curation.
-export const COMMON_WORDS_HE: string[] = [
-  'של', 'את', 'על', 'לא', 'זה', 'הוא', 'היא', 'אני', 'הם', 'גם',
-  'כל', 'יש', 'אין', 'מה', 'מי', 'כי', 'אם', 'עם', 'או', 'אבל',
-  'שלום', 'בית', 'ילד', 'ילדה', 'אבא', 'אמא', 'מים', 'לחם', 'ספר', 'יום',
-  'לילה', 'אור', 'גדול', 'קטן', 'טוב', 'רע', 'חדש', 'ישן', 'הלך', 'בא',
-  'ראש', 'עין', 'יד', 'רגל', 'דלת', 'חלון', 'שולחן', 'כיסא', 'עץ', 'פרח',
-];
+// Practice vocabulary, drawn from the Siddur Ashkenaz corpus in descending frequency so
+// the trainer drills the terms a learner actually meets. See siddur.he.ts for provenance.
+//
+// Replaces the former 50-term hand-typed seed. Selection still filters by unlocked keys,
+// so early stages naturally see only the short, reachable terms.
+import { SIDDUR_TERMS } from './siddur.he';
+
+export const COMMON_WORDS_HE: string[] = SIDDUR_TERMS;

@@ -39,4 +39,50 @@ describe('PracticePanel', () => {
     fireEvent.click(dismissButton);
     expect(queryByText(/נכתב: על/)).toBeNull();
   });
+
+  describe('translation', () => {
+    it('shows the line translation under the text', () => {
+      const { container } = render(
+        <PracticePanel
+          target="ברוך אתה"
+          statuses={[]}
+          index={0}
+          gloss="Blessed are You"
+        />
+      );
+      expect(container.querySelector('.practice-gloss')!.textContent).toBe('Blessed are You');
+    });
+
+    it('renders no translation block when the line has none', () => {
+      const { container } = render(
+        <PracticePanel target="ברוך אתה" statuses={[]} index={0} />
+      );
+      expect(container.querySelector('.practice-gloss')).toBeNull();
+    });
+
+    it('shows the gloss for the term under the cursor', () => {
+      const { container } = render(
+        <PracticePanel target="ברוך אתה" statuses={[]} index={0} />
+      );
+      const term = container.querySelector('.practice-term')!;
+      expect(term.textContent).toContain('ברוך');
+      expect(term.textContent).toContain('blessed');
+    });
+
+    it('follows the cursor to the next term', () => {
+      const { container } = render(
+        <PracticePanel target="ברוך אתה" statuses={[]} index={6} />
+      );
+      const term = container.querySelector('.practice-term')!;
+      expect(term.textContent).toContain('אתה');
+      expect(term.textContent).toContain('You');
+    });
+
+    it('renders nothing for a term with no gloss rather than inventing one', () => {
+      const { container } = render(
+        <PracticePanel target="זzzz" statuses={[]} index={0} />
+      );
+      expect(container.querySelector('.practice-term')).toBeNull();
+    });
+  });
 });
